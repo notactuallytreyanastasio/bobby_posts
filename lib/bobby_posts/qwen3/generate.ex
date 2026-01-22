@@ -21,18 +21,24 @@ defmodule BobbyPosts.Qwen3.Generate do
     max_tokens = Keyword.get(opts, :max_tokens, 50)
     eos_token_id = Keyword.get(opts, :eos_token_id, nil)
     verbose = Keyword.get(opts, :verbose, false)
+    temperature = Keyword.get(opts, :temperature, 0.7)
+    top_p = Keyword.get(opts, :top_p, 0.9)
 
     # Initial forward pass to get first logits and KV cache
     {_batch, input_len} = Nx.shape(input_ids)
 
     if verbose do
-      Logger.info("Starting generation with #{input_len} input tokens, max_tokens=#{max_tokens}")
+      Logger.info("Starting generation with #{input_len} input tokens, max_tokens=#{max_tokens}, temp=#{temperature}")
     end
 
     {logits, kv_cache} = Model.get_next_token_logits(input_ids, model, kv_cache: nil, past_len: 0)
 
     # Get first token
-    first_token = sample_greedy(logits)
+    first_token = if temperature == 0 do
+      sample_greedy(logits)
+    else
+      sample_with_temperature(logits, temperature, top_p)
+    end
 
     if verbose do
       Logger.info("Generated token 1: #{Nx.to_number(first_token)}")
@@ -46,16 +52,18 @@ defmodule BobbyPosts.Qwen3.Generate do
       input_len,
       max_tokens - 1,
       eos_token_id,
-      verbose
+      verbose,
+      temperature,
+      top_p
     )
   end
 
-  defp generate_loop(tokens, _kv_cache, _model, _past_len, 0, _eos, _verbose) do
+  defp generate_loop(tokens, _kv_cache, _model, _past_len, 0, _eos, _verbose, _temp, _top_p) do
     # Reached max tokens
     Enum.reverse(tokens) |> Enum.map(&Nx.to_number/1)
   end
 
-  defp generate_loop(tokens, kv_cache, model, past_len, remaining, eos_token_id, verbose) do
+  defp generate_loop(tokens, kv_cache, model, past_len, remaining, eos_token_id, verbose, temperature, top_p) do
     [last_token | _] = tokens
     last_token_id = Nx.to_number(last_token)
 
@@ -70,7 +78,11 @@ defmodule BobbyPosts.Qwen3.Generate do
       {logits, new_kv_cache} =
         Model.get_next_token_logits(input, model, kv_cache: kv_cache, past_len: new_past_len - 1)
 
-      next_token = sample_greedy(logits)
+      next_token = if temperature == 0 do
+        sample_greedy(logits)
+      else
+        sample_with_temperature(logits, temperature, top_p)
+      end
 
       if verbose && rem(length(tokens), 10) == 0 do
         Logger.info("Generated #{length(tokens)} tokens...")
@@ -83,7 +95,9 @@ defmodule BobbyPosts.Qwen3.Generate do
         past_len,
         remaining - 1,
         eos_token_id,
-        verbose
+        verbose,
+        temperature,
+        top_p
       )
     end
   end
@@ -97,6 +111,69 @@ defmodule BobbyPosts.Qwen3.Generate do
     logits
     |> Nx.argmax(axis: -1)
     |> Nx.squeeze()
+  end
+
+  @doc """
+  Temperature-based sampling with top-p filtering.
+  """
+  def sample_with_temperature(logits, temperature, top_p) do
+    # Squeeze to 1D if needed
+    logits = Nx.squeeze(logits)
+
+    # Apply temperature
+    scaled_logits = Nx.divide(logits, temperature)
+
+    # Softmax to get probabilities
+    max_logit = Nx.reduce_max(scaled_logits)
+    exp_logits = Nx.exp(Nx.subtract(scaled_logits, max_logit))
+    probs = Nx.divide(exp_logits, Nx.sum(exp_logits))
+
+    # Convert to list for CPU-based top-p sampling
+    probs_list = Nx.to_flat_list(probs)
+
+    # Create list of {prob, index} and sort descending by prob
+    indexed_probs = probs_list
+      |> Enum.with_index()
+      |> Enum.sort_by(fn {prob, _idx} -> -prob end)
+
+    # Apply top-p filtering and sample
+    {filtered_probs, filtered_indices} =
+      indexed_probs
+      |> Enum.reduce_while({[], [], 0.0}, fn {prob, idx}, {probs_acc, idx_acc, cumsum} ->
+        new_cumsum = cumsum + prob
+        if cumsum >= top_p and length(probs_acc) > 0 do
+          {:halt, {probs_acc, idx_acc, new_cumsum}}
+        else
+          {:cont, {[prob | probs_acc], [idx | idx_acc], new_cumsum}}
+        end
+      end)
+      |> then(fn {probs_acc, idx_acc, _cumsum} ->
+        {Enum.reverse(probs_acc), Enum.reverse(idx_acc)}
+      end)
+
+    # Renormalize
+    total = Enum.sum(filtered_probs)
+    normalized_probs = Enum.map(filtered_probs, &(&1 / total))
+
+    # Sample using inverse CDF
+    random_val = :rand.uniform()
+    selected_idx = sample_from_probs(normalized_probs, filtered_indices, random_val)
+
+    Nx.tensor(selected_idx)
+  end
+
+  defp sample_from_probs(probs, indices, random_val) do
+    {_cumsum, selected} =
+      Enum.zip(probs, indices)
+      |> Enum.reduce_while({0.0, hd(indices)}, fn {prob, idx}, {cumsum, _} ->
+        new_cumsum = cumsum + prob
+        if new_cumsum >= random_val do
+          {:halt, {new_cumsum, idx}}
+        else
+          {:cont, {new_cumsum, idx}}
+        end
+      end)
+    selected
   end
 
   @doc """

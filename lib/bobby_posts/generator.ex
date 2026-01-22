@@ -52,6 +52,13 @@ defmodule BobbyPosts.Generator do
     GenServer.call(__MODULE__, :memory_stats)
   end
 
+  @doc """
+  Traces token generation for debugging.
+  """
+  def trace_generate(opts \\ []) do
+    GenServer.call(__MODULE__, {:trace_generate, opts}, :infinity)
+  end
+
   # Server Callbacks
 
   @impl true
@@ -112,6 +119,24 @@ defmodule BobbyPosts.Generator do
     {:reply, result, state}
   end
 
+  @impl true
+  def handle_call({:trace_generate, opts}, _from, %{model: nil} = state) do
+    Logger.info("Model not loaded, loading now...")
+    case do_load_model(state.model_path) do
+      {:ok, model} ->
+        state = %{state | model: model}
+        result = do_trace_generate(model, opts)
+        {:reply, result, state}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:trace_generate, opts}, _from, %{model: model} = state) do
+    result = do_trace_generate(model, opts)
+    {:reply, result, state}
+  end
+
   # Private Functions
 
   defp get_model_path do
@@ -137,16 +162,18 @@ defmodule BobbyPosts.Generator do
     prompt = Keyword.get(opts, :prompt)
     max_tokens = Keyword.get(opts, :max_tokens, 200)
     count = Keyword.get(opts, :count, 1)
+    temperature = Keyword.get(opts, :temperature, 0.7)
+    top_p = Keyword.get(opts, :top_p, 0.9)
 
     posts =
       for _i <- 1..count do
-        generate_single(model, prompt, max_tokens)
+        generate_single(model, prompt, max_tokens, temperature, top_p)
       end
 
     {:ok, posts}
   end
 
-  defp generate_single(model, prompt, max_tokens) do
+  defp generate_single(model, prompt, max_tokens, temperature, top_p) do
     # Build ChatML prompt
     chatml_prompt = build_chatml_prompt(prompt)
 
@@ -158,7 +185,9 @@ defmodule BobbyPosts.Generator do
 
     generated_tokens = Generate.generate(input_ids, model,
       max_tokens: max_tokens,
-      eos_token_id: @eos_token_id
+      eos_token_id: @eos_token_id,
+      temperature: temperature,
+      top_p: top_p
     )
 
     # Decode
@@ -180,18 +209,23 @@ defmodule BobbyPosts.Generator do
 
   defp tokenize(text) do
     # Use Python subprocess for tokenization (HuggingFace transformers)
+    # Write text to temp file to avoid escaping issues with special characters
     model_path = get_model_path()
+    tmp_path = "/tmp/bobby_posts_tokenize_#{:rand.uniform(1_000_000)}.txt"
+
+    File.write!(tmp_path, text)
 
     python_code = """
 import sys
-sys.path.insert(0, '.')
 from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained('#{model_path}', trust_remote_code=True)
-tokens = tokenizer.encode('#{escape_for_python(text)}', add_special_tokens=False)
+with open('#{tmp_path}', 'r') as f:
+    text = f.read()
+tokens = tokenizer.encode(text, add_special_tokens=False)
 print(','.join(map(str, tokens)))
 """
 
-    case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
+    result = case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
       {output, 0} ->
         output
         |> String.trim()
@@ -202,23 +236,30 @@ print(','.join(map(str, tokens)))
         Logger.error("Tokenization failed: #{error}")
         []
     end
+
+    File.rm(tmp_path)
+    result
   end
 
   defp decode(tokens) do
+    # Write tokens to temp file to avoid any escaping issues
     model_path = get_model_path()
+    tmp_path = "/tmp/bobby_posts_decode_#{:rand.uniform(1_000_000)}.txt"
     token_str = Enum.join(tokens, ",")
 
+    File.write!(tmp_path, token_str)
+
     python_code = """
-import sys
-sys.path.insert(0, '.')
 from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained('#{model_path}', trust_remote_code=True)
-tokens = [#{token_str}]
+with open('#{tmp_path}', 'r') as f:
+    token_str = f.read()
+tokens = [int(t) for t in token_str.split(',')]
 text = tokenizer.decode(tokens, skip_special_tokens=False)
 print(text)
 """
 
-    case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
+    result = case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
       {output, 0} ->
         String.trim(output)
 
@@ -226,13 +267,9 @@ print(text)
         Logger.error("Decoding failed: #{error}")
         ""
     end
-  end
 
-  defp escape_for_python(text) do
-    text
-    |> String.replace("\\", "\\\\")
-    |> String.replace("'", "\\'")
-    |> String.replace("\n", "\\n")
+    File.rm(tmp_path)
+    result
   end
 
   defp clean_response(text) do
@@ -259,5 +296,36 @@ print(text)
   defp remove_thinking_blocks(text) do
     # Remove <think>...</think> blocks (Qwen3's reasoning mode)
     Regex.replace(~r/<think>.*?<\/think>/s, text, "")
+  end
+
+  defp do_trace_generate(model, opts) do
+    prompt = Keyword.get(opts, :prompt)
+    max_tokens = Keyword.get(opts, :max_tokens, 10)
+
+    # Build ChatML prompt
+    chatml_prompt = build_chatml_prompt(prompt)
+    Logger.info("ChatML prompt: #{inspect(chatml_prompt)}")
+
+    # Tokenize
+    tokens = tokenize(chatml_prompt)
+    Logger.info("Input tokens (#{length(tokens)}): #{inspect(tokens)}")
+
+    # Generate
+    input_ids = Nx.tensor([tokens], type: :s32)
+
+    generated_tokens = Generate.generate(input_ids, model,
+      max_tokens: max_tokens,
+      eos_token_id: @eos_token_id
+    )
+
+    Logger.info("Generated tokens: #{inspect(generated_tokens)}")
+
+    # Decode each token individually
+    for {token, i} <- Enum.with_index(generated_tokens) do
+      text = decode([token])
+      Logger.info("Token #{i}: #{token} -> #{inspect(text)}")
+    end
+
+    {:ok, generated_tokens}
   end
 end
