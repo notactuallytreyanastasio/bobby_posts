@@ -5,22 +5,24 @@ defmodule Mix.Tasks.Post do
   ## Usage
 
       mix post                           # Generate 1 post with default prompt
+      mix post 5                         # Generate 5 posts
       mix post "your prompt here"        # Generate with custom prompt
-      mix post --count 3                 # Generate 3 posts
-      mix post --max-tokens 200          # Set max generation length
+      mix post 3 "your prompt"           # Generate 3 posts with prompt
+      mix post --count 3                 # Generate 3 posts (flag style)
 
   ## Options
 
     * `-c, --count` - Number of posts to generate (default: 1)
-    * `-m, --max-tokens` - Maximum tokens per generation (default: 200)
+    * `-m, --max-tokens` - Maximum tokens per generation (default: 100)
     * `-v, --verbose` - Enable verbose logging
 
   ## Examples
 
       mix post
+      mix post 4
       mix post "What's your take on Elixir?"
+      mix post 3 "Hot take on AI"
       mix post --count 5 --max-tokens 100
-      mix post -c 3 -m 200 "Hot take on AI"
 
   """
 
@@ -41,6 +43,16 @@ defmodule Mix.Tasks.Post do
     v: :verbose
   ]
 
+  # Parse count from first positional arg if it's a number
+  defp parse_count_from_args([first | rest], nil) do
+    case Integer.parse(first) do
+      {n, ""} when n > 0 -> {n, rest}
+      _ -> {1, [first | rest]}
+    end
+  end
+  defp parse_count_from_args(rest, nil), do: {1, rest}
+  defp parse_count_from_args(rest, count), do: {count, rest}
+
   @impl Mix.Task
   def run(args) do
     # Start the application to get all dependencies
@@ -48,8 +60,9 @@ defmodule Mix.Tasks.Post do
 
     {opts, rest, _} = OptionParser.parse(args, switches: @switches, aliases: @aliases)
 
-    count = Keyword.get(opts, :count, 1)
-    max_tokens = Keyword.get(opts, :max_tokens, 200)
+    # Check if first positional arg is a number (count)
+    {count, rest} = parse_count_from_args(rest, Keyword.get(opts, :count))
+    max_tokens = Keyword.get(opts, :max_tokens, 100)
     verbose = Keyword.get(opts, :verbose, false)
 
     # Join remaining args as prompt
