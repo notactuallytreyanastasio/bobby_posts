@@ -176,6 +176,14 @@ defmodule BobbyPosts.Generator do
   end
 
   defp generate_single(model, prompt, max_tokens, temperature, top_p, char_limit) do
+    generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, 3)
+  end
+
+  defp generate_with_retry(_model, _prompt, _max_tokens, _temperature, _top_p, _char_limit, 0) do
+    "(generation failed - please try again)"
+  end
+
+  defp generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, retries) do
     # Build ChatML prompt
     chatml_prompt = build_chatml_prompt(prompt)
 
@@ -197,14 +205,21 @@ defmodule BobbyPosts.Generator do
     text = decode(all_tokens)
 
     # Clean up the response and enforce character limit
-    text
-    |> clean_response()
-    |> enforce_char_limit(char_limit)
+    result = text
+      |> clean_response()
+      |> enforce_char_limit(char_limit)
+
+    # Retry if empty
+    if String.trim(result) == "" do
+      generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
+    else
+      result
+    end
   end
 
   defp build_chatml_prompt(nil) do
-    # Default prompt for authentic chaotic Bluesky voice - emphasize brevity
-    "<|im_start|>user\nmake a short bluesky post in your authentic voice. keep it under 280 characters. skew towards chaotic<|im_end|>\n<|im_start|>assistant\n"
+    # Default prompt for authentic chaotic Bluesky voice - no hashtags, keep it brief
+    "<|im_start|>user\nmake a short bluesky post in your authentic voice. no hashtags ever. keep it under 280 characters. skew towards chaotic<|im_end|>\n<|im_start|>assistant\n"
   end
 
   defp build_chatml_prompt(prompt) do
@@ -282,6 +297,8 @@ print(text)
     |> extract_assistant_response()
     # Remove thinking blocks
     |> remove_thinking_blocks()
+    # Strip hashtags
+    |> strip_hashtags()
     # Clean up whitespace
     |> String.trim()
   end
@@ -299,7 +316,17 @@ print(text)
 
   defp remove_thinking_blocks(text) do
     # Remove <think>...</think> blocks (Qwen3's reasoning mode)
-    Regex.replace(~r/<think>.*?<\/think>/s, text, "")
+    # Also handle unclosed <think> blocks
+    text
+    |> then(&Regex.replace(~r/<think>.*?<\/think>/s, &1, ""))
+    |> then(&Regex.replace(~r/<think>.*$/s, &1, ""))
+  end
+
+  defp strip_hashtags(text) do
+    # Remove hashtags - user never uses them
+    text
+    |> String.replace(~r/#\w+\s*/u, "")
+    |> String.replace(~r/\s+/, " ")
   end
 
   defp enforce_char_limit(text, limit) when byte_size(text) <= limit do
