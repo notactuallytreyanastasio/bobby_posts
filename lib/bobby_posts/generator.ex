@@ -12,6 +12,7 @@ defmodule BobbyPosts.Generator do
 
   @default_model_path "/Users/robertgrayson/twitter_finetune/fused_model"
   @eos_token_id 151645  # Qwen3 <|im_end|> token
+  @bluesky_char_limit 300
 
   # Client API
 
@@ -160,20 +161,21 @@ defmodule BobbyPosts.Generator do
 
   defp do_generate(model, opts) do
     prompt = Keyword.get(opts, :prompt)
-    max_tokens = Keyword.get(opts, :max_tokens, 200)
+    max_tokens = Keyword.get(opts, :max_tokens, 100)
     count = Keyword.get(opts, :count, 1)
     temperature = Keyword.get(opts, :temperature, 0.7)
     top_p = Keyword.get(opts, :top_p, 0.9)
+    char_limit = Keyword.get(opts, :char_limit, @bluesky_char_limit)
 
     posts =
       for _i <- 1..count do
-        generate_single(model, prompt, max_tokens, temperature, top_p)
+        generate_single(model, prompt, max_tokens, temperature, top_p, char_limit)
       end
 
     {:ok, posts}
   end
 
-  defp generate_single(model, prompt, max_tokens, temperature, top_p) do
+  defp generate_single(model, prompt, max_tokens, temperature, top_p, char_limit) do
     # Build ChatML prompt
     chatml_prompt = build_chatml_prompt(prompt)
 
@@ -194,13 +196,15 @@ defmodule BobbyPosts.Generator do
     all_tokens = tokens ++ generated_tokens
     text = decode(all_tokens)
 
-    # Clean up the response
-    clean_response(text)
+    # Clean up the response and enforce character limit
+    text
+    |> clean_response()
+    |> enforce_char_limit(char_limit)
   end
 
   defp build_chatml_prompt(nil) do
-    # Default prompt for authentic chaotic Bluesky voice
-    "<|im_start|>user\nmake a bluesky post in your authentic voice. skew towards chaotic<|im_end|>\n<|im_start|>assistant\n"
+    # Default prompt for authentic chaotic Bluesky voice - emphasize brevity
+    "<|im_start|>user\nmake a short bluesky post in your authentic voice. keep it under 280 characters. skew towards chaotic<|im_end|>\n<|im_start|>assistant\n"
   end
 
   defp build_chatml_prompt(prompt) do
@@ -296,6 +300,28 @@ print(text)
   defp remove_thinking_blocks(text) do
     # Remove <think>...</think> blocks (Qwen3's reasoning mode)
     Regex.replace(~r/<think>.*?<\/think>/s, text, "")
+  end
+
+  defp enforce_char_limit(text, limit) when byte_size(text) <= limit do
+    text
+  end
+
+  defp enforce_char_limit(text, limit) do
+    # Try to truncate at sentence boundary
+    truncated = String.slice(text, 0, limit)
+
+    # Find last sentence-ending punctuation
+    case Regex.run(~r/^(.*[.!?])\s*/s, truncated) do
+      [_, sentence] when byte_size(sentence) >= 50 ->
+        String.trim(sentence)
+
+      _ ->
+        # No good sentence break, truncate at last space
+        case String.split(truncated, ~r/\s+/) |> Enum.slice(0..-2//1) |> Enum.join(" ") do
+          "" -> String.slice(text, 0, limit - 3) <> "..."
+          words -> words <> "..."
+        end
+    end
   end
 
   defp do_trace_generate(model, opts) do

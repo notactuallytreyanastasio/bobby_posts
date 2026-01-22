@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "hash": "21f44eb56c76c4cbc56997cd16d971c2a2e030f4",
+    "short_hash": "21f44eb",
+    "author": "YOUR_NAME_HERE",
+    "date": "2026-01-22T16:17:48-05:00",
+    "message": "fix: Add temperature sampling to eliminate deterministic cat posts\n\n- Fixed tokenization to use temp files instead of string interpolation\n  which was causing newlines to be escaped incorrectly\n- Added temperature-based sampling with top-p filtering\n- Default temperature=0.7, top_p=0.9 matches mlx-lm behavior\n- Greedy decoding (temperature=0) deterministically produces cat posts\n- Sampling produces varied output matching the training data distribution\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 2
+  }
+]
