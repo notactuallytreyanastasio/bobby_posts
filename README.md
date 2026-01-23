@@ -21,12 +21,12 @@ post = generate(model, tokenizer, prompt="write a post")
 
 ### The Problem
 
-There's no "just load and run" for LLMs in Elixir. Here's what was missing:
+Bumblebee has Qwen3 support, but not for 4-bit quantized models. Here's what was missing:
 
 1. **No 4-bit quantization support** - Elixir's Nx/EMLX couldn't do quantized matrix multiply
-2. **No safetensors loader** - Couldn't load the model weights
-3. **No Qwen3 implementation** - Had to write the model architecture from scratch
-4. **No MLX quantization bindings** - The GPU ops didn't exist
+2. **No quantized weight loading** - Bumblebee's loader doesn't handle int4 packed weights
+3. **No MLX quantization bindings** - The GPU ops for `quantized_matmul` didn't exist in EMLX
+4. **No custom inference path** - Bumblebee's serving doesn't support quantized forward passes
 
 ### The Solution: Build Everything
 
@@ -40,9 +40,10 @@ What I had to build/fork to make this work:
 │  LAYER 7: Phoenix App (bobby_posts)                             │
 │  └─ Web UI, CLI, GenServer to hold model state                  │
 │                                                                  │
-│  LAYER 6: Qwen3 Model Implementation (from scratch)             │
+│  LAYER 6: Qwen3 Quantized Inference (custom implementation)     │
 │  └─ model.ex, attention.ex, layers.ex, generate.ex              │
-│  └─ 36 transformer layers, GQA, RoPE, RMSNorm                   │
+│  └─ Bumblebee has Qwen3, but not quantized inference            │
+│  └─ Custom forward pass using quantized_matmul everywhere       │
 │  └─ KV cache for autoregressive generation                      │
 │                                                                  │
 │  LAYER 5: Safetensors Parser (new package)                      │
@@ -178,9 +179,9 @@ For quantized models, weights come in triplets:
 - `layer.scales` - float16 scale factors
 - `layer.biases` - float16 bias terms
 
-### Layer 6: Qwen3 Model Implementation
+### Layer 6: Qwen3 Quantized Inference
 
-The actual neural network, written in Elixir. 800+ lines implementing:
+Bumblebee already has Qwen3, but its serving layer doesn't support 4-bit quantization. We needed a custom inference implementation that uses `quantized_matmul` for every linear layer. 800+ lines of Elixir:
 
 **Attention (attention.ex)**
 ```elixir
