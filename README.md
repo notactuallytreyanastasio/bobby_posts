@@ -140,26 +140,48 @@ EMLX already existed but was missing quantization ops. That's why we forked it.
 
 ### Layer 4: EMLX Quantization NIFs (Our Fork)
 
-The missing piece. We added C++ NIFs that expose MLX's quantization functions:
+**Repository**: [`notactuallytreyanastasio/emlx`](https://github.com/notactuallytreyanastasio/emlx/tree/feat/quantization-ops) (branch: `feat/quantization-ops`)
+
+This is where the actual GPU code lives. We added C++ NIFs to `c_src/emlx_nif.cpp` that expose MLX's quantization functions to Elixir:
 
 ```cpp
-// c_src/emlx_nif.cpp - what we added
-ERL_NIF_TERM quantized_matmul(ErlNifEnv* env, ...) {
-    auto x = term_to_array(env, argv[0]);      // Elixir -> MLX
-    auto w = term_to_array(env, argv[1]);      // quantized weights
-    auto scales = term_to_array(env, argv[2]);
-    auto biases = term_to_array(env, argv[3]);
+// c_src/emlx_nif.cpp - the GPU bridge we added (~60 lines of C++)
 
-    // Call MLX's native quantized matmul
-    auto result = mlx::core::quantized_matmul(
-        x, w, scales, biases, transpose, group_size, bits
-    );
+// quantized_matmul - THE critical operation for 4-bit inference
+NIF(quantized_matmul) {
+    TENSOR_PARAM(0, x);       // Input tensor from Elixir
+    TENSOR_PARAM(1, w);       // Quantized weights (uint32 packed int4)
+    TENSOR_PARAM(2, scales);  // Scale factors (bfloat16)
+    TENSOR_PARAM(3, biases);  // Bias terms (bfloat16)
+    PARAM(4, bool, transpose);
+    PARAM(5, int, group_size);
+    PARAM(6, int, bits);
 
-    return array_to_term(env, result);  // MLX -> Elixir
+    // This single line is where Elixir talks to the GPU:
+    // MLX compiles this to a Metal shader that runs on Apple Silicon
+    TENSOR(mlx::core::quantized_matmul(
+        *x, *w, *scales, *biases, transpose, group_size, bits, device));
 }
+
+// Also added: dequantize() and quantize() for debugging/verification
 ```
 
-This one function is why we can run 4-bit models efficiently. Without it, we'd have to dequantize every weight tensor (slow, memory-hungry).
+**The call chain when you run inference:**
+```
+Elixir:       EMLX.quantized_matmul(input, weights, scales, biases, true, 64, 4)
+                 ↓
+C++ NIF:      emlx_nif.cpp receives Erlang terms, converts to MLX arrays
+                 ↓
+MLX C++:      mlx::core::quantized_matmul() builds compute graph
+                 ↓
+Metal:        MLX compiles operation to Metal shader (cached after first run)
+                 ↓
+GPU:          Metal dispatches shader to Apple Silicon GPU cores
+                 ↓
+Result:       GPU writes output to unified memory, Elixir reads it directly
+```
+
+This one function is why we can run 4-bit models efficiently. Without it, we'd have to dequantize every weight tensor on every forward pass (slow, memory-hungry). With it, the GPU unpacks int4→float16, applies scales/biases, and multiplies - all in one fused kernel.
 
 ### Layer 5: Safetensors Parser (Our Package)
 
