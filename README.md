@@ -73,7 +73,7 @@ Pure Elixir safetensors file parser for loading model weights directly into Nx t
 ### 3. Bumblebee (feat/qwen3 branch)
 **Repository**: `notactuallytreyanastasio/bumblebee`
 
-Added Qwen3 model family support for text generation.
+Fork tracking upstream Bumblebee. Qwen3 support already exists in upstream - this fork is used for compatibility with our custom quantized inference pipeline (Bumblebee's standard serving doesn't support 4-bit quantization).
 
 ## Installation
 
