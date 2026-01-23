@@ -137,6 +137,54 @@ config :bobby_posts, :model_path, "/path/to/your/model"
 
 ## How It Works
 
+### GPU Acceleration Stack
+
+The entire inference runs on Apple Silicon GPU via this stack:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Elixir Application                       │
+│                   (bobby_posts, Nx tensors)                  │
+├─────────────────────────────────────────────────────────────┤
+│                         EMLX                                 │
+│              (Nx Backend + Quantization NIFs)                │
+│                                                              │
+│  Nx.tensor([1,2,3]) -> EMLX.Backend -> mlx::array           │
+│  EMLX.quantized_matmul() -> C++ NIF -> mlx::quantized_matmul│
+├─────────────────────────────────────────────────────────────┤
+│                     MLX (C++ Library)                        │
+│            Apple's ML framework for Apple Silicon            │
+│                                                              │
+│  - Lazy evaluation (builds compute graph)                    │
+│  - Unified memory (CPU/GPU share RAM)                        │
+│  - Metal shader compilation                                  │
+├─────────────────────────────────────────────────────────────┤
+│                     Metal Framework                          │
+│              Apple's GPU compute API                         │
+│                                                              │
+│  - GPU kernel dispatch                                       │
+│  - Memory management                                         │
+│  - Shader execution                                          │
+├─────────────────────────────────────────────────────────────┤
+│                   Apple Silicon GPU                          │
+│              (M1/M2/M3/M4 Neural Engine)                     │
+│                                                              │
+│  - Matrix multiply units                                     │
+│  - Unified memory architecture (no CPU<->GPU copies)         │
+│  - 16GB+ shared RAM for large models                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Why This Is Fast
+
+1. **Unified Memory**: Apple Silicon shares RAM between CPU and GPU. Tensors created in Elixir are directly accessible by the GPU - no copying.
+
+2. **Quantized Matmul**: The `EMLX.quantized_matmul` NIF calls MLX's native quantized matrix multiply. The GPU unpacks int4 values and multiplies in a single fused kernel - no separate dequantization pass.
+
+3. **Lazy Evaluation**: MLX builds a compute graph and only executes when results are needed. This enables kernel fusion and optimal scheduling.
+
+4. **Metal Shaders**: MLX compiles optimized Metal shaders for each operation. These run directly on Apple Silicon's GPU cores.
+
 ### Token Generation Loop
 
 1. **Tokenization**: Text -> tokens via Python subprocess (HuggingFace tokenizers)
@@ -150,6 +198,23 @@ The model uses MLX's 4-bit quantization format:
 - 8 int4 values packed per uint32
 - Group size of 64 for scales/biases
 - `quantized_matmul` NIF bypasses dequantization for speed
+
+```elixir
+# What happens under the hood:
+input = Nx.tensor([[1.0, 2.0, ...]])           # Elixir tensor
+w = load_quantized_weights()                    # uint32 packed int4
+scales = load_scales()                          # float16
+biases = load_biases()                          # float16
+
+# This single call:
+output = EMLX.quantized_matmul(input, w, scales, biases, true, 64, 4)
+
+# Compiles to Metal shader that:
+# 1. Unpacks 8 int4 values from each uint32
+# 2. Applies group-wise scales and biases
+# 3. Multiplies with input
+# 4. All in one GPU kernel, no intermediate buffers
+```
 
 ### KV Cache
 
