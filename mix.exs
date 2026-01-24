@@ -62,11 +62,16 @@ defmodule BobbyPosts.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 
-      # ML Stack - pointing to forks with quantization support
+      # ML Stack
+      # TODO: After upstream PRs merge, update to:
+      #   {:emlx, "~> 0.3"},      # After quantization PR
+      #   {:safetensors, "~> 0.1"}, # After hex.pm publish
+      #   {:bumblebee, "~> 0.6"},   # Qwen3 already in upstream
       {:nx, "~> 0.10"},
       {:axon, "~> 0.7"},
       {:emlx, github: "notactuallytreyanastasio/emlx", branch: "feat/quantization-ops"},
       {:safetensors, github: "notactuallytreyanastasio/safetensors_ex", override: true},
+      # Note: Qwen3 is in upstream Bumblebee, using fork for consistency until all PRs merge
       {:bumblebee, github: "notactuallytreyanastasio/bumblebee", branch: "feat/qwen3"},
 
       # Utils
