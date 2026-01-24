@@ -47,7 +47,9 @@ defmodule BobbyPosts.AdapterLoader do
       lora_params = config["lora_parameters"]
       rank = lora_params["rank"]
       scale = lora_params["scale"]
-      scaling = scale / rank
+      # NOTE: mlx_lm uses scale directly, NOT scale/rank
+      # The standard LoRA paper uses alpha/rank, but mlx_lm doesn't divide by rank
+      scaling = scale
 
       Logger.info("LoRA config: rank=#{rank}, scale=#{scale}, scaling=#{scaling}")
 

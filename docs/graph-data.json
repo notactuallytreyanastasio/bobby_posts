@@ -1209,6 +1209,28 @@
       "created_at": "2026-01-24T03:24:25.235355-05:00",
       "updated_at": "2026-01-24T03:24:25.235355-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
+    },
+    {
+      "id": 111,
+      "change_id": "8428371c-8f2b-4e9e-ad45-33690537e64a",
+      "node_type": "observation",
+      "title": "LoRA scaling was wrong - Elixir used scale/rank=2.5 but Python uses scale=20 directly",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-24T18:27:54.786825-05:00",
+      "updated_at": "2026-01-24T18:27:54.786825-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
+    },
+    {
+      "id": 112,
+      "change_id": "e46767a1-4253-442b-8d79-325a237f02eb",
+      "node_type": "outcome",
+      "title": "Fixed LoRA scaling - 8x stronger fine-tuning signal now matches Python",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-24T18:27:55.818445-05:00",
+      "updated_at": "2026-01-24T18:27:55.818445-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
     }
   ],
   "edges": [
@@ -2454,6 +2476,17 @@
       "weight": 1.0,
       "rationale": "v1.0.0 is bobby_posts creation",
       "created_at": "2026-01-24T03:58:53.347852-05:00"
+    },
+    {
+      "id": 114,
+      "from_node_id": 111,
+      "to_node_id": 112,
+      "from_change_id": "8428371c-8f2b-4e9e-ad45-33690537e64a",
+      "to_change_id": "e46767a1-4253-442b-8d79-325a237f02eb",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Bug found and fixed",
+      "created_at": "2026-01-24T18:27:57.308030-05:00"
     }
   ]
 }
