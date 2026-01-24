@@ -1,5 +1,29 @@
 [
   {
+    "hash": "07fddf7ddcb3dc2b93963b35304586ccbab7263f",
+    "short_hash": "07fddf7",
+    "author": "=",
+    "date": "2026-01-24T03:18:18-05:00",
+    "message": "chore: Add TODO comments for future upstream deps\n\nOnce PRs are merged:\n- EMLX: quantization ops PR\n- Safetensors: hex.pm publication\n- Bumblebee: already has Qwen3 in upstream\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 1
+  },
+  {
+    "hash": "e6211806bf6e5a69c5ba2433c169fc57f7408ee0",
+    "short_hash": "e621180",
+    "author": "=",
+    "date": "2026-01-24T03:14:08-05:00",
+    "message": "docs: Add blog post and upstream PR plan\n\n- BLOG_POST.md: Comprehensive writeup of the pure Elixir journey\n- UPSTREAM_PLAN.md: Plan for PR'ing to EMLX, publishing safetensors\n\nTracked in deciduous as nodes 35-39.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "9471f996dba1ea2c59b8bda53ae2f1258785d16d",
+    "short_hash": "9471f99",
+    "author": "=",
+    "date": "2026-01-24T01:49:49-05:00",
+    "message": "feat: Pure Elixir LoRA inference - no Python\n\nMajor changes:\n- Switch from fused model to runtime LoRA for better quality\n  - Fused model re-quantizes after merge, losing precision\n  - Runtime LoRA keeps adapters in fp32, preserving fine-tuning\n- Replace Python subprocess tokenization with Bumblebee tokenizer\n  - New BobbyPosts.Tokenizer module using Bumblebee.load_tokenizer\n  - Pure Elixir encode/decode via Tokenizers library\n- Add /no_think directive to disable Qwen3 chain-of-thought\n- Strip emojis and hashtags from generated posts\n- Clean up response extraction for Bumblebee's token format\n\nThe LoRA formula (attention.ex:179-193):\n  base_output = quantized_matmul(x, weights)  # 4-bit GPU\n  lora_output = (x @ lora_a @ lora_b) * scale # fp32 precise\n  return base_output + lora_output\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 8
+  },
+  {
     "hash": "21f44eb56c76c4cbc56997cd16d971c2a2e030f4",
     "short_hash": "21f44eb",
     "author": "YOUR_NAME_HERE",
