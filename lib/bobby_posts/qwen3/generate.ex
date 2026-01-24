@@ -23,15 +23,17 @@ defmodule BobbyPosts.Qwen3.Generate do
     verbose = Keyword.get(opts, :verbose, false)
     temperature = Keyword.get(opts, :temperature, 0.7)
     top_p = Keyword.get(opts, :top_p, 0.9)
+    adapters = Keyword.get(opts, :adapters, nil)
 
     # Initial forward pass to get first logits and KV cache
     {_batch, input_len} = Nx.shape(input_ids)
 
     if verbose do
       Logger.info("Starting generation with #{input_len} input tokens, max_tokens=#{max_tokens}, temp=#{temperature}")
+      if adapters, do: Logger.info("Using LoRA adapters with scaling=#{adapters.scaling}")
     end
 
-    {logits, kv_cache} = Model.get_next_token_logits(input_ids, model, kv_cache: nil, past_len: 0)
+    {logits, kv_cache} = Model.get_next_token_logits(input_ids, model, kv_cache: nil, past_len: 0, adapters: adapters)
 
     # Get first token
     first_token = if temperature == 0 do
@@ -54,16 +56,17 @@ defmodule BobbyPosts.Qwen3.Generate do
       eos_token_id,
       verbose,
       temperature,
-      top_p
+      top_p,
+      adapters
     )
   end
 
-  defp generate_loop(tokens, _kv_cache, _model, _past_len, 0, _eos, _verbose, _temp, _top_p) do
+  defp generate_loop(tokens, _kv_cache, _model, _past_len, 0, _eos, _verbose, _temp, _top_p, _adapters) do
     # Reached max tokens
     Enum.reverse(tokens) |> Enum.map(&Nx.to_number/1)
   end
 
-  defp generate_loop(tokens, kv_cache, model, past_len, remaining, eos_token_id, verbose, temperature, top_p) do
+  defp generate_loop(tokens, kv_cache, model, past_len, remaining, eos_token_id, verbose, temperature, top_p, adapters) do
     [last_token | _] = tokens
     last_token_id = Nx.to_number(last_token)
 
@@ -76,7 +79,7 @@ defmodule BobbyPosts.Qwen3.Generate do
       new_past_len = past_len + length(tokens)
 
       {logits, new_kv_cache} =
-        Model.get_next_token_logits(input, model, kv_cache: kv_cache, past_len: new_past_len - 1)
+        Model.get_next_token_logits(input, model, kv_cache: kv_cache, past_len: new_past_len - 1, adapters: adapters)
 
       next_token = if temperature == 0 do
         sample_greedy(logits)
@@ -97,7 +100,8 @@ defmodule BobbyPosts.Qwen3.Generate do
         eos_token_id,
         verbose,
         temperature,
-        top_p
+        top_p,
+        adapters
       )
     end
   end

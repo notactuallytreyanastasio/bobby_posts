@@ -3,16 +3,24 @@ defmodule BobbyPosts.Generator do
   GenServer that holds the loaded Qwen3 model and provides text generation.
 
   The model is lazy-loaded on first generation request to avoid slow startup.
+  Uses base model + LoRA adapters for generation (not fused model).
+
+  Pure Elixir - no Python subprocess calls.
   """
 
   use GenServer
   require Logger
 
-  alias BobbyPosts.{QuantizedLoader, Qwen3.Generate}
+  alias BobbyPosts.{QuantizedLoader, AdapterLoader, Tokenizer, Qwen3.Generate}
 
-  @default_model_path "/Users/robertgrayson/twitter_finetune/fused_model"
+  # Base model path (not fused - adapters applied at runtime)
+  @default_model_path "/Users/robertgrayson/.cache/huggingface/hub/models--lmstudio-community--Qwen3-8B-MLX-4bit/snapshots/a84107f5c4dfdecf389b208598faeac322048237"
+  @default_adapter_path "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v3"
   @eos_token_id 151645  # Qwen3 <|im_end|> token
   @bluesky_char_limit 300
+
+  # Default prompt matching Python bot
+  @default_prompt "Write a tweet in your authentic voice. Lean chaotic but personable."
 
   # Client API
 
@@ -65,10 +73,14 @@ defmodule BobbyPosts.Generator do
   @impl true
   def init(opts) do
     model_path = Keyword.get(opts, :model_path, get_model_path())
+    adapter_path = Keyword.get(opts, :adapter_path, get_adapter_path())
 
     {:ok, %{
       model: nil,
+      adapters: nil,
+      tokenizer: nil,
       model_path: model_path,
+      adapter_path: adapter_path,
       loading: false
     }}
   end
@@ -80,9 +92,9 @@ defmodule BobbyPosts.Generator do
 
   @impl true
   def handle_call(:load_model, _from, %{model: nil} = state) do
-    case do_load_model(state.model_path) do
-      {:ok, model} ->
-        {:reply, :ok, %{state | model: model}}
+    case do_load_all(state.model_path, state.adapter_path) do
+      {:ok, model, adapters, tokenizer} ->
+        {:reply, :ok, %{state | model: model, adapters: adapters, tokenizer: tokenizer}}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -105,36 +117,36 @@ defmodule BobbyPosts.Generator do
   @impl true
   def handle_call({:generate, opts}, _from, %{model: nil} = state) do
     Logger.info("Model not loaded, loading now...")
-    case do_load_model(state.model_path) do
-      {:ok, model} ->
-        state = %{state | model: model}
-        result = do_generate(model, opts)
+    case do_load_all(state.model_path, state.adapter_path) do
+      {:ok, model, adapters, tokenizer} ->
+        state = %{state | model: model, adapters: adapters, tokenizer: tokenizer}
+        result = do_generate(state, opts)
         {:reply, result, state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:generate, opts}, _from, %{model: model} = state) do
-    result = do_generate(model, opts)
+  def handle_call({:generate, opts}, _from, state) do
+    result = do_generate(state, opts)
     {:reply, result, state}
   end
 
   @impl true
   def handle_call({:trace_generate, opts}, _from, %{model: nil} = state) do
     Logger.info("Model not loaded, loading now...")
-    case do_load_model(state.model_path) do
-      {:ok, model} ->
-        state = %{state | model: model}
-        result = do_trace_generate(model, opts)
+    case do_load_all(state.model_path, state.adapter_path) do
+      {:ok, model, adapters, tokenizer} ->
+        state = %{state | model: model, adapters: adapters, tokenizer: tokenizer}
+        result = do_trace_generate(state, opts)
         {:reply, result, state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:trace_generate, opts}, _from, %{model: model} = state) do
-    result = do_trace_generate(model, opts)
+  def handle_call({:trace_generate, opts}, _from, state) do
+    result = do_trace_generate(state, opts)
     {:reply, result, state}
   end
 
@@ -144,65 +156,82 @@ defmodule BobbyPosts.Generator do
     Application.get_env(:bobby_posts, :model_path, @default_model_path)
   end
 
-  defp do_load_model(model_path) do
-    Logger.info("Loading model from #{model_path}...")
+  defp get_adapter_path do
+    Application.get_env(:bobby_posts, :adapter_path, @default_adapter_path)
+  end
+
+  defp do_load_all(model_path, adapter_path) do
+    Logger.info("Loading model, adapters, and tokenizer...")
     start_time = System.monotonic_time(:millisecond)
 
-    case QuantizedLoader.load_model(model_path) do
-      {:ok, model} ->
-        elapsed = System.monotonic_time(:millisecond) - start_time
-        Logger.info("Model loaded in #{elapsed}ms")
-        {:ok, model}
+    with {:ok, tokenizer} <- Tokenizer.load(model_path),
+         _ = Logger.info("Tokenizer loaded"),
+         {:ok, model} <- QuantizedLoader.load_model(model_path),
+         _ = Logger.info("Base model loaded"),
+         {:ok, adapters} <- load_adapters_if_present(adapter_path) do
+      elapsed = System.monotonic_time(:millisecond) - start_time
+      Logger.info("All components loaded in #{elapsed}ms")
+      {:ok, model, adapters, tokenizer}
+    else
       {:error, reason} ->
-        Logger.error("Failed to load model: #{inspect(reason)}")
+        Logger.error("Failed to load: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
-  defp do_generate(model, opts) do
+  defp load_adapters_if_present(nil), do: {:ok, nil}
+  defp load_adapters_if_present(adapter_path) do
+    Logger.info("Loading adapters from #{adapter_path}...")
+    AdapterLoader.load_adapters(adapter_path)
+  end
+
+  defp do_generate(state, opts) do
     prompt = Keyword.get(opts, :prompt)
-    max_tokens = Keyword.get(opts, :max_tokens, 100)
+    max_tokens = Keyword.get(opts, :max_tokens, 280)
     count = Keyword.get(opts, :count, 1)
-    temperature = Keyword.get(opts, :temperature, 0.7)
+    temperature = Keyword.get(opts, :temperature, 0.8)
     top_p = Keyword.get(opts, :top_p, 0.9)
     char_limit = Keyword.get(opts, :char_limit, @bluesky_char_limit)
 
     posts =
       for _i <- 1..count do
-        generate_single(model, prompt, max_tokens, temperature, top_p, char_limit)
+        generate_single(state, prompt, max_tokens, temperature, top_p, char_limit)
       end
 
     {:ok, posts}
   end
 
-  defp generate_single(model, prompt, max_tokens, temperature, top_p, char_limit) do
-    generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, 3)
+  defp generate_single(state, prompt, max_tokens, temperature, top_p, char_limit) do
+    generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, 3)
   end
 
-  defp generate_with_retry(_model, _prompt, _max_tokens, _temperature, _top_p, _char_limit, 0) do
+  defp generate_with_retry(_state, _prompt, _max_tokens, _temperature, _top_p, _char_limit, 0) do
     "(generation failed - please try again)"
   end
 
-  defp generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, retries) do
+  defp generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, retries) do
+    %{model: model, adapters: adapters, tokenizer: tokenizer} = state
+
     # Build ChatML prompt
     chatml_prompt = build_chatml_prompt(prompt)
 
-    # Tokenize using Python subprocess
-    tokens = tokenize(chatml_prompt)
+    # Tokenize using pure Elixir (Bumblebee)
+    tokens = Tokenizer.encode(tokenizer, chatml_prompt)
 
-    # Generate
+    # Generate with adapters
     input_ids = Nx.tensor([tokens], type: :s32)
 
     generated_tokens = Generate.generate(input_ids, model,
       max_tokens: max_tokens,
       eos_token_id: @eos_token_id,
       temperature: temperature,
-      top_p: top_p
+      top_p: top_p,
+      adapters: adapters
     )
 
-    # Decode
+    # Decode using pure Elixir (Bumblebee)
     all_tokens = tokens ++ generated_tokens
-    text = decode(all_tokens)
+    text = Tokenizer.decode(tokenizer, all_tokens)
 
     # Clean up the response and enforce character limit
     result = text
@@ -211,84 +240,20 @@ defmodule BobbyPosts.Generator do
 
     # Retry if empty
     if String.trim(result) == "" do
-      generate_with_retry(model, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
+      generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
     else
       result
     end
   end
 
   defp build_chatml_prompt(nil) do
-    # Default prompt for authentic chaotic Bluesky voice - no hashtags, keep it brief
-    "<|im_start|>user\nmake a short bluesky post in your authentic voice. no hashtags ever. keep it under 280 characters. skew towards chaotic<|im_end|>\n<|im_start|>assistant\n"
+    # Default prompt with /no_think to disable Qwen3's chain-of-thought
+    "<|im_start|>user\n#{@default_prompt} /no_think<|im_end|>\n<|im_start|>assistant\n"
   end
 
   defp build_chatml_prompt(prompt) do
-    "<|im_start|>user\n#{prompt}<|im_end|>\n<|im_start|>assistant\n"
-  end
-
-  defp tokenize(text) do
-    # Use Python subprocess for tokenization (HuggingFace transformers)
-    # Write text to temp file to avoid escaping issues with special characters
-    model_path = get_model_path()
-    tmp_path = "/tmp/bobby_posts_tokenize_#{:rand.uniform(1_000_000)}.txt"
-
-    File.write!(tmp_path, text)
-
-    python_code = """
-import sys
-from transformers import AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained('#{model_path}', trust_remote_code=True)
-with open('#{tmp_path}', 'r') as f:
-    text = f.read()
-tokens = tokenizer.encode(text, add_special_tokens=False)
-print(','.join(map(str, tokens)))
-"""
-
-    result = case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
-      {output, 0} ->
-        output
-        |> String.trim()
-        |> String.split(",")
-        |> Enum.map(&String.to_integer/1)
-
-      {error, _} ->
-        Logger.error("Tokenization failed: #{error}")
-        []
-    end
-
-    File.rm(tmp_path)
-    result
-  end
-
-  defp decode(tokens) do
-    # Write tokens to temp file to avoid any escaping issues
-    model_path = get_model_path()
-    tmp_path = "/tmp/bobby_posts_decode_#{:rand.uniform(1_000_000)}.txt"
-    token_str = Enum.join(tokens, ",")
-
-    File.write!(tmp_path, token_str)
-
-    python_code = """
-from transformers import AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained('#{model_path}', trust_remote_code=True)
-with open('#{tmp_path}', 'r') as f:
-    token_str = f.read()
-tokens = [int(t) for t in token_str.split(',')]
-text = tokenizer.decode(tokens, skip_special_tokens=False)
-print(text)
-"""
-
-    result = case System.cmd("python3", ["-c", python_code], stderr_to_stdout: true) do
-      {output, 0} ->
-        String.trim(output)
-
-      {error, _} ->
-        Logger.error("Decoding failed: #{error}")
-        ""
-    end
-
-    File.rm(tmp_path)
-    result
+    # Add /no_think to disable thinking mode for faster, direct responses
+    "<|im_start|>user\n#{prompt} /no_think<|im_end|>\n<|im_start|>assistant\n"
   end
 
   defp clean_response(text) do
@@ -299,17 +264,36 @@ print(text)
     |> remove_thinking_blocks()
     # Strip hashtags
     |> strip_hashtags()
+    # Strip emojis
+    |> strip_emojis()
     # Clean up whitespace
     |> String.trim()
   end
 
   defp extract_assistant_response(text) do
+    # Handle both special token format and plain text format
+    # Bumblebee may decode special tokens as plain text
+    text
+    |> try_extract_with_markers()
+    |> try_extract_plain_assistant()
+  end
+
+  defp try_extract_with_markers(text) do
     case String.split(text, "<|im_start|>assistant\n", parts: 2) do
       [_, response] ->
         case String.split(response, "<|im_end|>", parts: 2) do
           [content, _] -> content
           [content] -> content
         end
+      _ -> text
+    end
+  end
+
+  defp try_extract_plain_assistant(text) do
+    # Handle case where Bumblebee decodes as plain "assistant" text
+    # Pattern: "...user ... /no_think assistant ACTUAL_CONTENT"
+    case Regex.run(~r/assistant\s+(.+)$/s, text) do
+      [_, content] -> String.trim(content)
       _ -> text
     end
   end
@@ -327,6 +311,75 @@ print(text)
     text
     |> String.replace(~r/#\w+\s*/u, "")
     |> String.replace(~r/\s+/, " ")
+  end
+
+  defp strip_emojis(text) do
+    # Remove emojis - comprehensive Unicode emoji ranges
+    text
+    |> String.replace(~r/[\x{1F600}-\x{1F64F}]/u, "")  # Emoticons
+    |> String.replace(~r/[\x{1F300}-\x{1F5FF}]/u, "")  # Misc symbols & pictographs
+    |> String.replace(~r/[\x{1F680}-\x{1F6FF}]/u, "")  # Transport & map symbols
+    |> String.replace(~r/[\x{1F1E0}-\x{1F1FF}]/u, "")  # Flags
+    |> String.replace(~r/[\x{2600}-\x{26FF}]/u, "")    # Misc symbols
+    |> String.replace(~r/[\x{2700}-\x{27BF}]/u, "")    # Dingbats
+    |> String.replace(~r/[\x{FE00}-\x{FE0F}]/u, "")    # Variation selectors
+    |> String.replace(~r/[\x{1F900}-\x{1F9FF}]/u, "")  # Supplemental symbols
+    |> String.replace(~r/[\x{1FA00}-\x{1FA6F}]/u, "")  # Chess, extended-A
+    |> String.replace(~r/[\x{1FA70}-\x{1FAFF}]/u, "")  # Symbols extended-A
+    |> String.replace(~r/[\x{231A}-\x{231B}]/u, "")    # Watch, hourglass
+    |> String.replace(~r/[\x{23E9}-\x{23F3}]/u, "")    # Media controls
+    |> String.replace(~r/[\x{23F8}-\x{23FA}]/u, "")    # More media
+    |> String.replace(~r/[\x{25AA}-\x{25AB}]/u, "")    # Squares
+    |> String.replace(~r/[\x{25B6}]/u, "")             # Play button
+    |> String.replace(~r/[\x{25C0}]/u, "")             # Reverse button
+    |> String.replace(~r/[\x{25FB}-\x{25FE}]/u, "")    # More squares
+    |> String.replace(~r/[\x{2614}-\x{2615}]/u, "")    # Umbrella, hot beverage
+    |> String.replace(~r/[\x{2648}-\x{2653}]/u, "")    # Zodiac
+    |> String.replace(~r/[\x{267F}]/u, "")             # Wheelchair
+    |> String.replace(~r/[\x{2693}]/u, "")             # Anchor
+    |> String.replace(~r/[\x{26A1}]/u, "")             # High voltage
+    |> String.replace(~r/[\x{26AA}-\x{26AB}]/u, "")    # Circles
+    |> String.replace(~r/[\x{26BD}-\x{26BE}]/u, "")    # Sports
+    |> String.replace(~r/[\x{26C4}-\x{26C5}]/u, "")    # Weather
+    |> String.replace(~r/[\x{26CE}]/u, "")             # Ophiuchus
+    |> String.replace(~r/[\x{26D4}]/u, "")             # No entry
+    |> String.replace(~r/[\x{26EA}]/u, "")             # Church
+    |> String.replace(~r/[\x{26F2}-\x{26F3}]/u, "")    # Fountain, golf
+    |> String.replace(~r/[\x{26F5}]/u, "")             # Sailboat
+    |> String.replace(~r/[\x{26FA}]/u, "")             # Tent
+    |> String.replace(~r/[\x{26FD}]/u, "")             # Fuel pump
+    |> String.replace(~r/[\x{2702}]/u, "")             # Scissors
+    |> String.replace(~r/[\x{2705}]/u, "")             # Check mark
+    |> String.replace(~r/[\x{2708}-\x{270D}]/u, "")    # Airplane to writing hand
+    |> String.replace(~r/[\x{270F}]/u, "")             # Pencil
+    |> String.replace(~r/[\x{2712}]/u, "")             # Black nib
+    |> String.replace(~r/[\x{2714}]/u, "")             # Check mark
+    |> String.replace(~r/[\x{2716}]/u, "")             # X mark
+    |> String.replace(~r/[\x{271D}]/u, "")             # Latin cross
+    |> String.replace(~r/[\x{2721}]/u, "")             # Star of David
+    |> String.replace(~r/[\x{2728}]/u, "")             # Sparkles
+    |> String.replace(~r/[\x{2733}-\x{2734}]/u, "")    # Eight spoked asterisk
+    |> String.replace(~r/[\x{2744}]/u, "")             # Snowflake
+    |> String.replace(~r/[\x{2747}]/u, "")             # Sparkle
+    |> String.replace(~r/[\x{274C}]/u, "")             # Cross mark
+    |> String.replace(~r/[\x{274E}]/u, "")             # Cross mark
+    |> String.replace(~r/[\x{2753}-\x{2755}]/u, "")    # Question marks
+    |> String.replace(~r/[\x{2757}]/u, "")             # Exclamation
+    |> String.replace(~r/[\x{2763}-\x{2764}]/u, "")    # Heart exclamation, heart
+    |> String.replace(~r/[\x{2795}-\x{2797}]/u, "")    # Math symbols
+    |> String.replace(~r/[\x{27A1}]/u, "")             # Right arrow
+    |> String.replace(~r/[\x{27B0}]/u, "")             # Curly loop
+    |> String.replace(~r/[\x{27BF}]/u, "")             # Double curly loop
+    |> String.replace(~r/[\x{2934}-\x{2935}]/u, "")    # Arrows
+    |> String.replace(~r/[\x{2B05}-\x{2B07}]/u, "")    # Arrows
+    |> String.replace(~r/[\x{2B1B}-\x{2B1C}]/u, "")    # Squares
+    |> String.replace(~r/[\x{2B50}]/u, "")             # Star
+    |> String.replace(~r/[\x{2B55}]/u, "")             # Circle
+    |> String.replace(~r/[\x{3030}]/u, "")             # Wavy dash
+    |> String.replace(~r/[\x{303D}]/u, "")             # Part alternation mark
+    |> String.replace(~r/[\x{3297}]/u, "")             # Circled ideograph congratulation
+    |> String.replace(~r/[\x{3299}]/u, "")             # Circled ideograph secret
+    |> String.replace(~r/\s+/, " ")                    # Clean up multiple spaces
   end
 
   defp enforce_char_limit(text, limit) when byte_size(text) <= limit do
@@ -351,7 +404,8 @@ print(text)
     end
   end
 
-  defp do_trace_generate(model, opts) do
+  defp do_trace_generate(state, opts) do
+    %{model: model, adapters: adapters, tokenizer: tokenizer} = state
     prompt = Keyword.get(opts, :prompt)
     max_tokens = Keyword.get(opts, :max_tokens, 10)
 
@@ -359,23 +413,24 @@ print(text)
     chatml_prompt = build_chatml_prompt(prompt)
     Logger.info("ChatML prompt: #{inspect(chatml_prompt)}")
 
-    # Tokenize
-    tokens = tokenize(chatml_prompt)
+    # Tokenize using pure Elixir
+    tokens = Tokenizer.encode(tokenizer, chatml_prompt)
     Logger.info("Input tokens (#{length(tokens)}): #{inspect(tokens)}")
 
-    # Generate
+    # Generate with adapters
     input_ids = Nx.tensor([tokens], type: :s32)
 
     generated_tokens = Generate.generate(input_ids, model,
       max_tokens: max_tokens,
-      eos_token_id: @eos_token_id
+      eos_token_id: @eos_token_id,
+      adapters: adapters
     )
 
     Logger.info("Generated tokens: #{inspect(generated_tokens)}")
 
-    # Decode each token individually
+    # Decode each token individually using pure Elixir
     for {token, i} <- Enum.with_index(generated_tokens) do
-      text = decode([token])
+      text = Tokenizer.decode(tokenizer, [token])
       Logger.info("Token #{i}: #{token} -> #{inspect(text)}")
     end
 

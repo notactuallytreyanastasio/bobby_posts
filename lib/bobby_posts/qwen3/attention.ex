@@ -28,6 +28,8 @@ defmodule BobbyPosts.Qwen3.Attention do
     sin_freqs = opts[:sin_freqs]
     kv_cache = opts[:kv_cache]
     attention_mask = opts[:attention_mask]
+    adapters = opts[:adapters]
+    scaling = opts[:lora_scaling] || 0.0
 
     hidden_size = config["hidden_size"]
     num_heads = config["num_attention_heads"]
@@ -38,10 +40,28 @@ defmodule BobbyPosts.Qwen3.Attention do
     {batch, seq_len, _} = Nx.shape(hidden_states)
     eps = config["rms_norm_eps"]
 
-    # Project to Q, K, V using quantized matmul
-    q = quantized_linear(hidden_states, layer_weights.self_attn.q_proj)
-    k = quantized_linear(hidden_states, layer_weights.self_attn.k_proj)
-    v = quantized_linear(hidden_states, layer_weights.self_attn.v_proj)
+    # Get adapter weights for attention if present
+    attn_adapters = if adapters, do: adapters.self_attn, else: nil
+
+    # Project to Q, K, V using quantized matmul with optional LoRA
+    q = quantized_linear_with_lora(
+      hidden_states,
+      layer_weights.self_attn.q_proj,
+      attn_adapters && attn_adapters.q_proj,
+      scaling
+    )
+    k = quantized_linear_with_lora(
+      hidden_states,
+      layer_weights.self_attn.k_proj,
+      attn_adapters && attn_adapters.k_proj,
+      scaling
+    )
+    v = quantized_linear_with_lora(
+      hidden_states,
+      layer_weights.self_attn.v_proj,
+      attn_adapters && attn_adapters.v_proj,
+      scaling
+    )
 
     # Reshape to [batch, seq, num_heads, head_dim] for Q/K normalization
     q = Nx.reshape(q, {batch, seq_len, num_heads, head_dim})
@@ -110,8 +130,13 @@ defmodule BobbyPosts.Qwen3.Attention do
       |> Nx.transpose(axes: [0, 2, 1, 3])
       |> Nx.reshape({batch, seq_len, hidden_size})
 
-    # Output projection
-    output = quantized_linear(attn_output, layer_weights.self_attn.o_proj)
+    # Output projection with optional LoRA
+    output = quantized_linear_with_lora(
+      attn_output,
+      layer_weights.self_attn.o_proj,
+      attn_adapters && attn_adapters.o_proj,
+      scaling
+    )
 
     {output, updated_cache}
   end
@@ -133,6 +158,39 @@ defmodule BobbyPosts.Qwen3.Attention do
 
     # Convert back to Nx tensor
     EMLX.Backend.to_nx(result)
+  end
+
+  @doc """
+  Performs quantized linear projection with LoRA adapter.
+
+  LoRA formula: output = base_output + (x @ lora_a @ lora_b) * scaling
+
+  ## Parameters
+    - x: Input tensor [batch, seq, hidden]
+    - base_weights: Quantized base weights {weight, scales, biases}
+    - lora_weights: LoRA adapter weights {lora_a, lora_b} or nil
+    - scaling: LoRA scaling factor (scale / rank)
+  """
+  def quantized_linear_with_lora(x, base_weights, nil, _scaling) do
+    # No LoRA, just base linear
+    quantized_linear(x, base_weights)
+  end
+
+  def quantized_linear_with_lora(x, base_weights, %{lora_a: lora_a, lora_b: lora_b}, scaling) do
+    # Base output using quantized weights
+    base_output = quantized_linear(x, base_weights)
+
+    # LoRA: (x @ lora_a @ lora_b) * scaling
+    # lora_a: [input_dim, rank]
+    # lora_b: [rank, output_dim]
+    # x: [batch, seq, input_dim]
+    # Use Nx.LinAlg.dot for batched matrix multiply on GPU
+    # Contract last axis of x with first axis of lora_a
+    temp = Nx.dot(x, [-1], lora_a, [0])  # [batch, seq, rank]
+    lora_output = Nx.dot(temp, [-1], lora_b, [0])  # [batch, seq, output_dim]
+    lora_output = Nx.multiply(lora_output, scaling)
+
+    Nx.add(base_output, lora_output)
   end
 
   # Apply RMSNorm to Q/K per head dimension

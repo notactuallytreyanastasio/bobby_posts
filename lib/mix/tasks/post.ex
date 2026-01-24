@@ -62,7 +62,7 @@ defmodule Mix.Tasks.Post do
 
     # Check if first positional arg is a number (count)
     {count, rest} = parse_count_from_args(rest, Keyword.get(opts, :count))
-    max_tokens = Keyword.get(opts, :max_tokens, 100)
+    max_tokens = Keyword.get(opts, :max_tokens, 280)
     verbose = Keyword.get(opts, :verbose, false)
 
     # Join remaining args as prompt

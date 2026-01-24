@@ -27,6 +27,8 @@ defmodule BobbyPosts.Qwen3.Model do
     config = model.config
     kv_cache = opts[:kv_cache]
     past_len = opts[:past_len] || 0
+    adapters = opts[:adapters]
+    lora_scaling = if adapters, do: adapters.scaling, else: 0.0
 
     {_batch, seq_len} = Nx.shape(input_ids)
 
@@ -48,12 +50,15 @@ defmodule BobbyPosts.Qwen3.Model do
       |> Enum.with_index()
       |> Enum.reduce({hidden_states, []}, fn {layer_weights, idx}, {h, caches} ->
         layer_cache = if kv_cache, do: Enum.at(kv_cache, idx), else: nil
+        layer_adapters = if adapters, do: Map.get(adapters.layers, idx), else: nil
 
         {h_new, cache} =
           transformer_layer(h, layer_weights, config,
             cos_freqs: cos_freqs,
             sin_freqs: sin_freqs,
-            kv_cache: layer_cache
+            kv_cache: layer_cache,
+            adapters: layer_adapters,
+            lora_scaling: lora_scaling
           )
 
         {h_new, caches ++ [cache]}
@@ -75,16 +80,20 @@ defmodule BobbyPosts.Qwen3.Model do
     cos_freqs = opts[:cos_freqs]
     sin_freqs = opts[:sin_freqs]
     kv_cache = opts[:kv_cache]
+    adapters = opts[:adapters]
+    lora_scaling = opts[:lora_scaling] || 0.0
 
     # Pre-attention norm
     normed = Layers.rms_norm(hidden_states, layer_weights.input_layernorm, eps: config["rms_norm_eps"])
 
-    # Self-attention with residual
+    # Self-attention with residual (with optional LoRA)
     {attn_output, new_cache} =
       Attention.forward(normed, layer_weights, config,
         cos_freqs: cos_freqs,
         sin_freqs: sin_freqs,
-        kv_cache: kv_cache
+        kv_cache: kv_cache,
+        adapters: adapters,
+        lora_scaling: lora_scaling
       )
 
     hidden_states = Nx.add(hidden_states, attn_output)
@@ -92,24 +101,40 @@ defmodule BobbyPosts.Qwen3.Model do
     # Pre-MLP norm
     normed = Layers.rms_norm(hidden_states, layer_weights.post_attention_layernorm, eps: config["rms_norm_eps"])
 
-    # MLP with SwiGLU
-    mlp_output = mlp_forward(normed, layer_weights.mlp)
+    # MLP with SwiGLU (with optional LoRA)
+    mlp_adapters = if adapters, do: adapters.mlp, else: nil
+    mlp_output = mlp_forward(normed, layer_weights.mlp, mlp_adapters, lora_scaling)
     hidden_states = Nx.add(hidden_states, mlp_output)
 
     {hidden_states, new_cache}
   end
 
   @doc """
-  MLP forward pass with SwiGLU activation.
+  MLP forward pass with SwiGLU activation and optional LoRA.
   """
-  def mlp_forward(x, mlp_weights) do
-    gate = Attention.quantized_linear(x, mlp_weights.gate_proj)
-    up = Attention.quantized_linear(x, mlp_weights.up_proj)
+  def mlp_forward(x, mlp_weights, mlp_adapters \\ nil, lora_scaling \\ 0.0) do
+    gate = Attention.quantized_linear_with_lora(
+      x,
+      mlp_weights.gate_proj,
+      mlp_adapters && mlp_adapters.gate_proj,
+      lora_scaling
+    )
+    up = Attention.quantized_linear_with_lora(
+      x,
+      mlp_weights.up_proj,
+      mlp_adapters && mlp_adapters.up_proj,
+      lora_scaling
+    )
 
     # SwiGLU: down(gate * silu(up))
     hidden = Layers.swiglu(gate, up)
 
-    Attention.quantized_linear(hidden, mlp_weights.down_proj)
+    Attention.quantized_linear_with_lora(
+      hidden,
+      mlp_weights.down_proj,
+      mlp_adapters && mlp_adapters.down_proj,
+      lora_scaling
+    )
   end
 
   @doc """
@@ -145,6 +170,7 @@ defmodule BobbyPosts.Qwen3.Model do
   Get next token logits for generation.
 
   Only returns logits for the last position.
+  Accepts optional adapters for LoRA.
   """
   def get_next_token_logits(input_ids, model, opts \\ []) do
     {logits, kv_cache} = forward(input_ids, model, opts)
