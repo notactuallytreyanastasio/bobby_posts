@@ -18,9 +18,10 @@ defmodule BobbyPosts.Generator do
   @default_adapter_path "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v4"
   @eos_token_id 151645  # Qwen3 <|im_end|> token
   @bluesky_char_limit 300
+  @min_char_length 150  # Retry if post is shorter than this
 
-  # Default prompt matching Python bot
-  @default_prompt "Write a tweet in your authentic voice. Lean chaotic but personable."
+  # Default prompt - encourage longer Bluesky-length posts
+  @default_prompt "Write a longer post for Bluesky (up to 300 chars). Be authentic, chaotic but personable. Develop the thought fully."
 
   # Client API
 
@@ -238,11 +239,19 @@ defmodule BobbyPosts.Generator do
       |> clean_response()
       |> enforce_char_limit(char_limit)
 
-    # Retry if empty
-    if String.trim(result) == "" do
-      generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
-    else
-      result
+    # Retry if empty or too short
+    trimmed = String.trim(result)
+    cond do
+      trimmed == "" ->
+        Logger.debug("Empty result, retrying (#{retries - 1} left)")
+        generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
+
+      String.length(trimmed) < @min_char_length and retries > 1 ->
+        Logger.debug("Post too short (#{String.length(trimmed)} chars), retrying (#{retries - 1} left)")
+        generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, retries - 1)
+
+      true ->
+        result
     end
   end
 
