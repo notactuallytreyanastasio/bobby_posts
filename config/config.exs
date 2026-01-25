@@ -11,8 +11,8 @@ config :bobby_posts,
   generators: [timestamp_type: :utc_datetime],
   # Base 4-bit quantized model (NOT fused - apply LoRA at runtime for better quality)
   model_path: "/Users/robertgrayson/.cache/huggingface/hub/models--lmstudio-community--Qwen3-8B-MLX-4bit/snapshots/a84107f5c4dfdecf389b208598faeac322048237",
-  # LoRA adapters applied at runtime in fp32 for full fine-tuning precision
-  adapter_path: "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v5"
+  # LoRA adapters - see https://github.com/notactuallytreyanastasio/bobby_posts_adapters
+  adapter_path: "/Users/robertgrayson/twitter_finetune/bobby_posts_adapters/adapters/v5"
 
 # Import adapter version tracking (commit this with adapter changes)
 import_config "adapter_version.exs"

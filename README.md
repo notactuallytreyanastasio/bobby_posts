@@ -374,6 +374,19 @@ Pure Elixir safetensors parser. Loads model weights into Nx tensors.
 
 Fork for compatibility. Qwen3 already exists in upstream - we just needed a fork for our dependency chain. The actual inference doesn't use Bumblebee's serving (it doesn't support quantization).
 
+### 4. LoRA Adapters Repository
+**[`notactuallytreyanastasio/bobby_posts_adapters`](https://github.com/notactuallytreyanastasio/bobby_posts_adapters)**
+
+Git LFS repository containing the trained LoRA adapter weights (~38MB each). Versioned separately from code.
+
+```bash
+# Clone with Git LFS
+git lfs install
+git clone https://github.com/notactuallytreyanastasio/bobby_posts_adapters
+```
+
+Current version: **v5** (trained on longer posts >160 chars, Bluesky weighted 3x)
+
 ## Usage
 
 ```bash

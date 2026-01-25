@@ -1,12 +1,16 @@
 # Adapter version tracking
 # This file records which adapter version the code is configured to use
 # Update this when switching adapters and commit it with the change
+#
+# Adapters repo: https://github.com/notactuallytreyanastasio/bobby_posts_adapters
+# Clone with: git lfs install && git clone https://github.com/notactuallytreyanastasio/bobby_posts_adapters
 
 import Config
 
 config :bobby_posts,
   adapter_version: "v5",
-  adapter_path: "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v5",
+  adapter_repo: "https://github.com/notactuallytreyanastasio/bobby_posts_adapters",
+  adapter_path: "/Users/robertgrayson/twitter_finetune/bobby_posts_adapters/adapters/v5",
   training_config: "qwen3_4bit_v5_config.yaml",
   training_params: %{
     iterations: 25_000,
