@@ -18,10 +18,10 @@ defmodule BobbyPosts.Generator do
   @default_adapter_path "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v4"
   @eos_token_id 151645  # Qwen3 <|im_end|> token
   @bluesky_char_limit 300
-  @min_char_length 150  # Retry if post is shorter than this
+  @min_char_length 80  # Retry if post is shorter than this (lowered - model trained on tweets)
 
-  # Default prompt - encourage longer Bluesky-length posts
-  @default_prompt "Write a longer post for Bluesky (up to 300 chars). Be authentic, chaotic but personable. Develop the thought fully."
+  # Default prompt - explicitly ask for longer content
+  @default_prompt "Write a post that is at least 200 characters long. Expand on your thought, add context or a second sentence. Be authentic and chaotic."
 
   # Client API
 
@@ -190,7 +190,7 @@ defmodule BobbyPosts.Generator do
     prompt = Keyword.get(opts, :prompt)
     max_tokens = Keyword.get(opts, :max_tokens, 280)
     count = Keyword.get(opts, :count, 1)
-    temperature = Keyword.get(opts, :temperature, 0.8)
+    temperature = Keyword.get(opts, :temperature, 0.95)
     top_p = Keyword.get(opts, :top_p, 0.9)
     char_limit = Keyword.get(opts, :char_limit, @bluesky_char_limit)
 
@@ -203,7 +203,7 @@ defmodule BobbyPosts.Generator do
   end
 
   defp generate_single(state, prompt, max_tokens, temperature, top_p, char_limit) do
-    generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, 3)
+    generate_with_retry(state, prompt, max_tokens, temperature, top_p, char_limit, 5)
   end
 
   defp generate_with_retry(_state, _prompt, _max_tokens, _temperature, _top_p, _char_limit, 0) do
