@@ -12,7 +12,10 @@ config :bobby_posts,
   # Base 4-bit quantized model (NOT fused - apply LoRA at runtime for better quality)
   model_path: "/Users/robertgrayson/.cache/huggingface/hub/models--lmstudio-community--Qwen3-8B-MLX-4bit/snapshots/a84107f5c4dfdecf389b208598faeac322048237",
   # LoRA adapters applied at runtime in fp32 for full fine-tuning precision
-  adapter_path: "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v3"
+  adapter_path: "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v5"
+
+# Import adapter version tracking (commit this with adapter changes)
+import_config "adapter_version.exs"
 
 # Configure the endpoint
 config :bobby_posts, BobbyPostsWeb.Endpoint,

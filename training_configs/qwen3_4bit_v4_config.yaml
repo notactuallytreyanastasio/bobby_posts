@@ -1,0 +1,20 @@
+model: lmstudio-community/Qwen3-8B-MLX-4bit
+data: /Users/robertgrayson/twitter_finetune/combined_data
+adapter_path: /Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v4
+train: true
+fine_tune_type: lora
+batch_size: 1
+grad_accumulation_steps: 8
+iters: 25000
+learning_rate: 1e-5
+max_seq_length: 256
+save_every: 2500
+steps_per_report: 500
+steps_per_eval: 2500
+mask_prompt: true
+seed: 42
+num_layers: 16
+lora_parameters:
+  rank: 8
+  dropout: 0.0
+  scale: 20.0

@@ -15,13 +15,13 @@ defmodule BobbyPosts.Generator do
 
   # Base model path (not fused - adapters applied at runtime)
   @default_model_path "/Users/robertgrayson/.cache/huggingface/hub/models--lmstudio-community--Qwen3-8B-MLX-4bit/snapshots/a84107f5c4dfdecf389b208598faeac322048237"
-  @default_adapter_path "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v4"
+  @default_adapter_path "/Users/robertgrayson/twitter_finetune/adapters_qwen3_4bit_v5"
   @eos_token_id 151645  # Qwen3 <|im_end|> token
   @bluesky_char_limit 300
   @min_char_length 80  # Retry if post is shorter than this (lowered - model trained on tweets)
 
   # Default prompt - explicitly ask for longer content
-  @default_prompt "Write a post that is at least 200 characters long. Expand on your thought, add context or a second sentence. Be authentic and chaotic."
+  @default_prompt "Write a post that is at least 200 characters long in your authentic voice. Expand on your thought, add context or a second sentence. Be chaotic but personable and compassionate and creative."
 
   # Client API
 
