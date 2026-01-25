@@ -4,6 +4,8 @@
 
 This is what happens when you decide "I want to run my fine-tuned LLM in Elixir" and refuse to give up.
 
+**Status**: Quality now matches Python's `mlx_lm` implementation after fixing a LoRA scaling bug.
+
 ## The Journey: Python to Elixir
 
 ### It Started Simple
@@ -273,6 +275,42 @@ def forward(input_ids, model, kv_cache) do
 end
 ```
 
+### Runtime LoRA Application
+
+Unlike fused models where LoRA weights are merged into the base model, we apply LoRA at inference time. This means:
+
+1. **Load base model**: Qwen3-8B-4bit quantized weights
+2. **Load adapter**: LoRA A/B matrices from training
+3. **Apply at runtime**: For each linear layer, compute `output + (scale × x × A × B)`
+
+```elixir
+# adapter_loader.ex - Runtime LoRA application
+def apply_lora(output, input, lora_a, lora_b, scaling) do
+  # LoRA: W' = W + (scale × A × B)
+  # Applied as: y = Wx + scale × (x × A × B)
+  lora_out = input
+    |> Nx.dot(lora_a)
+    |> Nx.dot(lora_b)
+    |> Nx.multiply(scaling)
+
+  Nx.add(output, lora_out)
+end
+```
+
+**Critical Bug We Fixed**: LoRA scaling was 8x too weak.
+
+Python's `mlx_lm` uses `scale` directly (20.0), but our Elixir code was using `scale / rank` (20.0 / 8 = 2.5). This made the fine-tuning signal too weak, causing the base model's quirks to dominate outputs.
+
+```elixir
+# BEFORE (wrong):
+scaling = scale / rank  # 20.0 / 8 = 2.5
+
+# AFTER (correct - matches Python):
+scaling = scale  # 20.0
+```
+
+This single-line fix made outputs match Python quality exactly.
+
 ### Layer 7: Phoenix Application
 
 Finally, the app that ties it all together:
@@ -296,6 +334,23 @@ What we achieved:
 | Generation Throughput | ~21 tok/s |
 | Lines of Elixir | ~2000 |
 | Lines of C++ (NIFs) | ~300 |
+
+## Training Configuration
+
+The LoRA adapter was trained using `mlx_lm.lora`:
+
+| Parameter | Value |
+|-----------|-------|
+| Base Model | Qwen3-8B-MLX-4bit |
+| LoRA Rank | 8 |
+| LoRA Scale | 20.0 |
+| Learning Rate | 1e-5 |
+| Iterations | 25,000 |
+| Batch Size | 1 (8 gradient accumulation) |
+| Max Sequence Length | 256 |
+| Layers Fine-tuned | 16 |
+
+Training data: ~1,160 posts in ChatML format with `mask_prompt: true` to only train on completions.
 
 ## The Forks
 
@@ -339,6 +394,7 @@ mix phx.server
 3. **KV cache** - getting the shapes right for autoregressive generation
 4. **Debugging GPU code** - errors are cryptic, no stack traces
 5. **Token mismatch bug** - spent hours finding an escape character issue
+6. **LoRA scaling bug** - outputs had an "uncanny valley" quality until we discovered Python uses `scale` directly, not `scale/rank` like the original LoRA paper
 
 ## Was It Worth It?
 
