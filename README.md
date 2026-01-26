@@ -372,7 +372,7 @@ Pure Elixir safetensors parser. Loads model weights into Nx tensors.
 ### 3. Bumblebee Fork
 **`notactuallytreyanastasio/bumblebee`** (branch: `feat/qwen3`)
 
-Fork for compatibility. Qwen3 already exists in upstream - we just needed a fork for our dependency chain. The actual inference doesn't use Bumblebee's serving (it doesn't support quantization).
+Used **only for tokenization** (encoding/decoding text to tokens). We don't use Bumblebee's model serving - our custom inference code in bobby_posts handles quantized forward passes directly via EMLX. Bumblebee's Qwen3 tokenizer works great, but its serving layer doesn't support 4-bit quantization.
 
 ### 4. LoRA Adapters Repository
 **[`notactuallytreyanastasio/bobby_posts_adapters`](https://github.com/notactuallytreyanastasio/bobby_posts_adapters)**
