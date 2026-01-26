@@ -1682,6 +1682,28 @@
       "created_at": "2026-01-25T22:13:23.903033-05:00",
       "updated_at": "2026-01-25T22:13:23.903033-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":50}"
+    },
+    {
+      "id": 154,
+      "change_id": "64dbe568-f99e-4034-9025-06cc6ff10dc8",
+      "node_type": "goal",
+      "title": "Upstream to Bumblebee for off-the-shelf quantized LoRA",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T00:34:31.882549-05:00",
+      "updated_at": "2026-01-26T00:34:31.882549-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":60}"
+    },
+    {
+      "id": 155,
+      "change_id": "696f88c6-c7e8-437d-a7ca-3557c9aa676b",
+      "node_type": "action",
+      "title": "Created BUMBLEBEE_INTEGRATION_PLAN.md with 4-phase roadmap",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T00:34:31.893958-05:00",
+      "updated_at": "2026-01-26T00:34:31.893958-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
     }
   ],
   "edges": [
