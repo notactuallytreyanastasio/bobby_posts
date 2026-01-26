@@ -2342,6 +2342,28 @@
       "created_at": "2026-01-26T08:50:05.815806-05:00",
       "updated_at": "2026-01-26T08:50:05.815806-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":95}"
+    },
+    {
+      "id": 214,
+      "change_id": "f5000dab-0090-4285-b995-39d4c8621d49",
+      "node_type": "action",
+      "title": "Published bumblebee_quantized repo",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T09:13:19.171365-05:00",
+      "updated_at": "2026-01-26T09:13:19.171365-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"5fc4799\",\"confidence\":95}"
+    },
+    {
+      "id": 215,
+      "change_id": "d78c1d7d-5697-42c6-83e0-32094e5bcb46",
+      "node_type": "outcome",
+      "title": "bumblebee_quantized live at github.com/notactuallytreyanastasio/bumblebee_quantized",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T09:13:27.666969-05:00",
+      "updated_at": "2026-01-26T09:13:27.666969-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":95}"
     }
   ],
   "edges": [
@@ -4929,6 +4951,28 @@
       "weight": 1.0,
       "rationale": "Concrete deliverable",
       "created_at": "2026-01-26T08:50:05.822060-05:00"
+    },
+    {
+      "id": 236,
+      "from_node_id": 156,
+      "to_node_id": 214,
+      "from_change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "to_change_id": "f5000dab-0090-4285-b995-39d4c8621d49",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Published as package",
+      "created_at": "2026-01-26T09:13:19.178671-05:00"
+    },
+    {
+      "id": 237,
+      "from_node_id": 214,
+      "to_node_id": 215,
+      "from_change_id": "f5000dab-0090-4285-b995-39d4c8621d49",
+      "to_change_id": "d78c1d7d-5697-42c6-83e0-32094e5bcb46",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Success",
+      "created_at": "2026-01-26T09:13:27.674018-05:00"
     }
   ]
 }

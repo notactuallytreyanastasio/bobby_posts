@@ -1,5 +1,13 @@
 [
   {
+    "hash": "5fc4799b2f87f1b3c676f734fe403e5adf85e1b0",
+    "short_hash": "5fc4799",
+    "author": "=",
+    "date": "2026-01-26T08:50:25-05:00",
+    "message": "docs: Flesh out decision graph for Bumblebee contribution\n\nAdded 51 new nodes capturing:\n- 3 key decisions (backend strategy, model definition, LoRA scope)\n- 9 options for those decisions with rationale\n- 25 observations about implementation details\n- 5-step upstream contribution plan\n- API design decisions for loader and adapters\n- Technical details (LoRA scaling, weight format, KV cache)\n- User workflow and performance expectations\n\nGraph now: 213 nodes, 235 edges\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 1
+  },
+  {
     "hash": "858f3841f0971d03df68d079cda3eaa3e44e7556",
     "short_hash": "858f384",
     "author": "=",
