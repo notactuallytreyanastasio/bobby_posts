@@ -1,5 +1,13 @@
 [
   {
+    "hash": "858f3841f0971d03df68d079cda3eaa3e44e7556",
+    "short_hash": "858f384",
+    "author": "=",
+    "date": "2026-01-25T18:06:45-05:00",
+    "message": "chore: Link to new bobby_posts_adapters repo\n\n- Create separate Git LFS repo for adapter weights\n- Update all paths to point to new adapters repo location\n- Add adapters repo reference to README\n- Document clone instructions with git lfs\n\nAdapters repo: https://github.com/notactuallytreyanastasio/bobby_posts_adapters\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 5
+  },
+  {
     "hash": "07fddf7ddcb3dc2b93963b35304586ccbab7263f",
     "short_hash": "07fddf7",
     "author": "=",
