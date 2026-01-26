@@ -151,20 +151,22 @@ end
 
 ---
 
-## Open Questions
+## Design Decisions
 
-1. **Backend specificity:** quantized_matmul only exists in EMLX. Should it be:
-   - EMLX-only feature?
-   - Added to Nx with backend dispatch?
-   - Made into an Axon custom layer?
+1. **Backend specificity:** EMLX-only (Apple Silicon)
+   - quantized_matmul is an EMLX-specific operation
+   - Requires Apple Silicon unified memory architecture
+   - Clear error message if user tries with different backend
 
-2. **Model definition changes:** How invasive should changes to model defs be?
-   - Separate quantized model defs?
-   - Conditional paths in existing defs?
+2. **Model definition changes:** Separate quantized model definitions
+   - New `Bumblebee.Text.Qwen3Quantized` module
+   - Configurable via options
+   - Doesn't pollute the standard model definitions
 
-3. **LoRA scope:** Should Bumblebee support:
-   - Just loading pre-trained adapters?
-   - Also training adapters (bigger scope)?
+3. **LoRA scope:** Both inference AND training
+   - `Bumblebee.load_adapter/2` - load pre-trained adapters
+   - `Bumblebee.train_adapter/3` - train new adapters
+   - Full workflow: prepare data → train → save → load → inference
 
 ---
 
