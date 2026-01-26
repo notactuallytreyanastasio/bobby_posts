@@ -179,15 +179,18 @@ For other developers to train their own adapters:
 
 Training command:
 ```bash
-mlx_lm.lora \
-  --model lmstudio-community/Qwen3-8B-MLX-4bit \
-  --data ./your_posts \
-  --train \
-  --iters 25000 \
-  --learning-rate 1e-5 \
-  --lora-rank 8 \
-  --lora-scale 20.0 \
-  --mask-prompt
+# Create a config file (e.g., training_config.yaml):
+# model: lmstudio-community/Qwen3-8B-MLX-4bit
+# data: ./your_posts
+# train: true
+# iters: 25000
+# learning_rate: 1e-5
+# mask_prompt: true
+# lora_parameters:
+#   rank: 8
+#   scale: 20.0
+
+python -m mlx_lm.lora --config training_config.yaml
 ```
 
 ## Who Benefits
