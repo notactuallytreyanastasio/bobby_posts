@@ -1704,6 +1704,61 @@
       "created_at": "2026-01-26T00:34:31.893958-05:00",
       "updated_at": "2026-01-26T00:34:31.893958-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 156,
+      "change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "node_type": "goal",
+      "title": "Prepare Bumblebee contribution code",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T01:56:06.971650-05:00",
+      "updated_at": "2026-01-26T01:56:06.971650-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":90,\"prompt\":\"review the document and find any other inaccuracies, then lets being to execute it as a plan\\n\\n1 yes limit to apple silicon \\n2. separate model definitions I think, configurable\\n3. why not both\\n\\ngo for it, I am leaving the computer to sleep a bit\"}"
+    },
+    {
+      "id": 157,
+      "change_id": "fc288c4a-cbd7-4721-bd2c-2632e405e28a",
+      "node_type": "action",
+      "title": "Extract quantized_loader.ex for Bumblebee",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T01:56:12.122670-05:00",
+      "updated_at": "2026-01-26T01:56:12.122670-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":85}"
+    },
+    {
+      "id": 158,
+      "change_id": "a274b07b-3625-483f-b2e3-297f8a46a6ab",
+      "node_type": "action",
+      "title": "Extract adapters.ex with load/apply/train support",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T01:57:36.174850-05:00",
+      "updated_at": "2026-01-26T01:57:36.174850-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":85}"
+    },
+    {
+      "id": 159,
+      "change_id": "b5170172-ef8b-47da-b311-375549b04069",
+      "node_type": "action",
+      "title": "Extract Qwen3Quantized model definition",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T01:59:56.115953-05:00",
+      "updated_at": "2026-01-26T01:59:56.115953-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":85}"
+    },
+    {
+      "id": 160,
+      "change_id": "c6762bd8-7ca4-425c-bb65-065c84b9edc0",
+      "node_type": "action",
+      "title": "Extract QuantizedGeneration serving",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T02:00:03.342119-05:00",
+      "updated_at": "2026-01-26T02:00:03.342119-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":85}"
     }
   ],
   "edges": [
@@ -3653,6 +3708,50 @@
       "weight": 1.0,
       "rationale": "Current state enables this",
       "created_at": "2026-01-25T22:13:29.857384-05:00"
+    },
+    {
+      "id": 178,
+      "from_node_id": 156,
+      "to_node_id": 157,
+      "from_change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "to_change_id": "fc288c4a-cbd7-4721-bd2c-2632e405e28a",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "First extraction",
+      "created_at": "2026-01-26T01:56:17.126313-05:00"
+    },
+    {
+      "id": 179,
+      "from_node_id": 156,
+      "to_node_id": 158,
+      "from_change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "to_change_id": "a274b07b-3625-483f-b2e3-297f8a46a6ab",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Adapter module",
+      "created_at": "2026-01-26T01:57:36.181831-05:00"
+    },
+    {
+      "id": 180,
+      "from_node_id": 156,
+      "to_node_id": 159,
+      "from_change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "to_change_id": "b5170172-ef8b-47da-b311-375549b04069",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Model module",
+      "created_at": "2026-01-26T01:59:56.123260-05:00"
+    },
+    {
+      "id": 181,
+      "from_node_id": 156,
+      "to_node_id": 160,
+      "from_change_id": "dc04c6b9-7847-4d9c-96e0-a5d086a298bf",
+      "to_change_id": "c6762bd8-7ca4-425c-bb65-065c84b9edc0",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Serving module",
+      "created_at": "2026-01-26T02:00:03.348875-05:00"
     }
   ]
 }
