@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bobby Posts - Decision Graph</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+        #header {
+            padding: 16px 24px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #header h1 { font-size: 20px; font-weight: 600; }
+        #header .stats { font-size: 14px; color: #8b949e; }
+        #container { display: flex; height: calc(100vh - 57px); }
+        #graph { flex: 1; }
+        #sidebar {
+            width: 400px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        #sidebar h2 { font-size: 16px; margin-bottom: 12px; color: #58a6ff; }
+        #sidebar .node-info { display: none; }
+        #sidebar .node-info.active { display: block; }
+        .label { font-size: 12px; color: #8b949e; margin-top: 12px; }
+        .value { font-size: 14px; margin-top: 4px; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-goal { background: #238636; color: #fff; }
+        .badge-decision { background: #1f6feb; color: #fff; }
+        .badge-option { background: #6e7681; color: #fff; }
+        .badge-action { background: #a371f7; color: #fff; }
+        .badge-outcome { background: #3fb950; color: #fff; }
+        .badge-observation { background: #d29922; color: #fff; }
+        .badge-revisit { background: #f85149; color: #fff; }
+        .prompt-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+        .edge-list { margin-top: 8px; }
+        .edge-item {
+            padding: 8px;
+            background: #0d1117;
+            border-radius: 4px;
+            margin-top: 4px;
+            font-size: 13px;
+        }
+        .edge-item .arrow { color: #8b949e; }
+        #legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        #legend .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        #legend .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        #instructions {
+            padding: 24px;
+            text-align: center;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Bobby Posts - Decision Graph</h1>
+        <div id="legend"></div>
+        <div class="stats" id="stats"></div>
+    </div>
+    <div id="container">
+        <div id="graph"></div>
+        <div id="sidebar">
+            <div id="instructions">
+                <p>Click a node to see details</p>
+            </div>
+            <div id="node-info" class="node-info">
+                <h2 id="node-title"></h2>
+                <div class="label">Type</div>
+                <div class="value"><span id="node-type" class="badge"></span></div>
+                <div class="label">Confidence</div>
+                <div class="value" id="node-confidence"></div>
+                <div id="prompt-section" style="display:none;">
+                    <div class="label">Prompt</div>
+                    <div class="prompt-box" id="node-prompt"></div>
+                </div>
+                <div id="incoming-section">
+                    <div class="label">Incoming Edges</div>
+                    <div class="edge-list" id="incoming-edges"></div>
+                </div>
+                <div id="outgoing-section">
+                    <div class="label">Outgoing Edges</div>
+                    <div class="edge-list" id="outgoing-edges"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const typeColors = {
+            goal: '#238636',
+            decision: '#1f6feb',
+            option: '#6e7681',
+            action: '#a371f7',
+            outcome: '#3fb950',
+            observation: '#d29922',
+            revisit: '#f85149'
+        };
+
+        // Render legend
+        const legend = document.getElementById('legend');
+        Object.entries(typeColors).forEach(([type, color]) => {
+            legend.innerHTML += `<div class="item"><div class="dot" style="background:${color}"></div>${type}</div>`;
+        });
+
+        fetch('graph-data.json')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('stats').textContent = `${data.nodes.length} nodes, ${data.edges.length} edges`;
+
+                const nodes = new vis.DataSet(data.nodes.map(n => ({
+                    id: n.id,
+                    label: n.title.length > 40 ? n.title.substring(0, 40) + '...' : n.title,
+                    title: n.title,
+                    color: { background: typeColors[n.node_type] || '#6e7681', border: '#30363d' },
+                    font: { color: '#fff', size: 11 },
+                    shape: n.node_type === 'goal' ? 'diamond' : n.node_type === 'decision' ? 'box' : 'ellipse',
+                    _data: n
+                })));
+
+                const edges = new vis.DataSet(data.edges.map(e => ({
+                    from: e.from_node,
+                    to: e.to_node,
+                    arrows: 'to',
+                    color: { color: '#30363d', highlight: '#58a6ff' },
+                    _data: e
+                })));
+
+                const container = document.getElementById('graph');
+                const network = new vis.Network(container, { nodes, edges }, {
+                    physics: {
+                        solver: 'forceAtlas2Based',
+                        forceAtlas2Based: { gravitationalConstant: -50, springLength: 100 }
+                    },
+                    interaction: { hover: true }
+                });
+
+                network.on('click', params => {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const node = nodes.get(nodeId)._data;
+
+                        document.getElementById('instructions').style.display = 'none';
+                        document.getElementById('node-info').classList.add('active');
+
+                        document.getElementById('node-title').textContent = node.title;
+                        const typeEl = document.getElementById('node-type');
+                        typeEl.textContent = node.node_type;
+                        typeEl.className = `badge badge-${node.node_type}`;
+                        document.getElementById('node-confidence').textContent = node.confidence ? `${node.confidence}%` : 'N/A';
+
+                        if (node.prompt) {
+                            document.getElementById('prompt-section').style.display = 'block';
+                            document.getElementById('node-prompt').textContent = node.prompt;
+                        } else {
+                            document.getElementById('prompt-section').style.display = 'none';
+                        }
+
+                        // Find edges
+                        const incoming = data.edges.filter(e => e.to_node === nodeId);
+                        const outgoing = data.edges.filter(e => e.from_node === nodeId);
+
+                        const incomingEl = document.getElementById('incoming-edges');
+                        incomingEl.innerHTML = incoming.length ? incoming.map(e => {
+                            const fromNode = data.nodes.find(n => n.id === e.from_node);
+                            return `<div class="edge-item"><span class="arrow">&larr;</span> ${fromNode?.title || e.from_node}${e.rationale ? ` <em>(${e.rationale})</em>` : ''}</div>`;
+                        }).join('') : '<div class="edge-item">None</div>';
+
+                        const outgoingEl = document.getElementById('outgoing-edges');
+                        outgoingEl.innerHTML = outgoing.length ? outgoing.map(e => {
+                            const toNode = data.nodes.find(n => n.id === e.to_node);
+                            return `<div class="edge-item"><span class="arrow">&rarr;</span> ${toNode?.title || e.to_node}${e.rationale ? ` <em>(${e.rationale})</em>` : ''}</div>`;
+                        }).join('') : '<div class="edge-item">None</div>';
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
