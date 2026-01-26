@@ -9,7 +9,7 @@ Enable other developers to do this:
 {:ok, model} = Bumblebee.load_model(
   {:hf, "lmstudio-community/Qwen3-8B-MLX-4bit"},
   quantization: :int4,
-  backend: EMLX
+  backend: {EMLX.Backend, device: :gpu}
 )
 
 {:ok, adapter} = Bumblebee.load_adapter(
@@ -77,7 +77,7 @@ Add to `Bumblebee.load_model/2`:
 ```elixir
 # New loader code needed
 defp load_quantized_params(path, opts) do
-  tensors = Safetensors.load(path, backend: EMLX.Backend)
+  tensors = Safetensors.load(path, backend: {EMLX.Backend, device: :gpu})
 
   # Group into quantized layers
   for {name, weight} <- tensors, String.ends_with?(name, ".weight") do
@@ -134,7 +134,7 @@ end
 
 Create documentation for:
 - Training data format (ChatML JSONL)
-- LoRA training with `mlx_lm.lora`
+- LoRA training with `python -m mlx_lm.lora`
 - Recommended hyperparameters
 - Adapter format specification
 
