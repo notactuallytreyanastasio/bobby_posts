@@ -44,9 +44,9 @@ What I had to build/fork to make this work:
 │                                                                  │
 │  LAYER 6: Qwen3 Quantized Inference (custom implementation)     │
 │  └─ model.ex, attention.ex, layers.ex, generate.ex              │
-│  └─ Bumblebee has Qwen3, but not quantized inference            │
 │  └─ Custom forward pass using quantized_matmul everywhere       │
 │  └─ KV cache for autoregressive generation                      │
+│  └─ Bumblebee used only for tokenization (not inference)        │
 │                                                                  │
 │  LAYER 5: Safetensors Parser (new package)                      │
 │  └─ Parse .safetensors file format                              │
@@ -147,7 +147,7 @@ EMLX already existed but was missing quantization ops. That's why we forked it.
 This is where the actual GPU code lives. We added C++ NIFs to `c_src/emlx_nif.cpp` that expose MLX's quantization functions to Elixir:
 
 ```cpp
-// c_src/emlx_nif.cpp - the GPU bridge we added (~60 lines of C++)
+// c_src/emlx_nif.cpp - the quantization ops we added (~60 lines, ~300 total in fork)
 
 // quantized_matmul - THE critical operation for 4-bit inference
 NIF(quantized_matmul) {
@@ -337,7 +337,7 @@ What we achieved:
 
 ## Training Configuration
 
-The LoRA adapter was trained using `mlx_lm.lora`:
+The LoRA adapter (v5) was trained using `mlx_lm.lora`:
 
 | Parameter | Value |
 |-----------|-------|
@@ -350,11 +350,15 @@ The LoRA adapter was trained using `mlx_lm.lora`:
 | Max Sequence Length | 256 |
 | Layers Fine-tuned | 16 |
 
-Training data: ~1,160 posts in ChatML format with `mask_prompt: true` to only train on completions.
+**v5 Training Data:**
+- 18,140 samples (filtered to posts >160 chars for longer output)
+- Bluesky posts weighted 3x over Twitter posts
+- Average post length: 230 chars (up from 120 in v4)
+- ChatML format with `mask_prompt: true` to only train on completions
 
-## The Forks
+## The Repositories
 
-Three repositories we created/forked:
+Four repositories we created/forked:
 
 ### 1. EMLX Fork
 **`notactuallytreyanastasio/emlx`** (branch: `feat/quantization-ops`)
@@ -411,7 +415,7 @@ mix phx.server
 
 ## Was It Worth It?
 
-The Python version is 50 lines. This is 2000+ lines of Elixir plus C++ NIFs plus three forked packages.
+The Python version is 50 lines. This is 2000+ lines of Elixir plus C++ NIFs plus four repositories (two forks, one new package, one adapters repo).
 
 But now I have:
 - LLM inference in my native language (Elixir)
