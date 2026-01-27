@@ -2408,6 +2408,138 @@
       "created_at": "2026-01-26T09:31:06.383829-05:00",
       "updated_at": "2026-01-26T09:31:06.383829-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 220,
+      "change_id": "d533ca61-7f8f-40e4-b46e-0b6f9a08987f",
+      "node_type": "goal",
+      "title": "Upstream all quantization work to EMLX and Bumblebee",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:24.271715-05:00",
+      "updated_at": "2026-01-26T21:53:24.271715-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"404816b\",\"confidence\":85,\"files\":[\"docs/upstream/FULL_UPSTREAM_PLAN.md\",\"docs/upstream/emlx-quantization-plan.md\"]}"
+    },
+    {
+      "id": 221,
+      "change_id": "f2ed49ef-31b3-4006-871c-4ef2c657153c",
+      "node_type": "decision",
+      "title": "EMLX quantization API design",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:29.859926-05:00",
+      "updated_at": "2026-01-26T21:53:29.859926-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 222,
+      "change_id": "623a75d5-76b7-4502-be3f-4228449cab59",
+      "node_type": "observation",
+      "title": "Paulo's feedback: Don't expose quantized_matmul directly",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:31.040964-05:00",
+      "updated_at": "2026-01-26T21:53:31.040964-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":95}"
+    },
+    {
+      "id": 223,
+      "change_id": "d2349941-11b9-4897-a781-ab93daaaf443",
+      "node_type": "option",
+      "title": "Transparent QuantizedTensor with smart Nx.dot dispatch",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:36.443056-05:00",
+      "updated_at": "2026-01-26T21:53:36.443056-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":95}"
+    },
+    {
+      "id": 224,
+      "change_id": "60fb3c6d-09ac-4c00-841d-9da65598c09a",
+      "node_type": "option",
+      "title": "Direct EMLX.quantized_matmul API (rejected)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:37.750972-05:00",
+      "updated_at": "2026-01-26T21:53:37.750972-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":20}"
+    },
+    {
+      "id": 225,
+      "change_id": "4dbdd626-22da-4d16-8b49-3c45b9cbcc95",
+      "node_type": "observation",
+      "title": "QuantizedTensor struct: weight, scales, biases, bits, group_size, original_shape",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:38.765660-05:00",
+      "updated_at": "2026-01-26T21:53:38.765660-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 226,
+      "change_id": "020b34d5-cc08-4385-a2c2-cabc28f413e9",
+      "node_type": "action",
+      "title": "Phase 1: EMLX QuantizedTensor + smart Nx.dot (Month 1)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:54.633524-05:00",
+      "updated_at": "2026-01-26T21:53:54.633524-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":80}"
+    },
+    {
+      "id": 227,
+      "change_id": "a3a60ddd-0f9d-4c27-b0a9-4331c912ff32",
+      "node_type": "action",
+      "title": "Phase 2: Bumblebee quantized model loading (Month 2)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:55.283010-05:00",
+      "updated_at": "2026-01-26T21:53:55.283010-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":75}"
+    },
+    {
+      "id": 228,
+      "change_id": "13164a08-5558-43f7-86c0-97e4f72529b8",
+      "node_type": "action",
+      "title": "Phase 3: LoRA adapters + training integration (Month 3)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:53:55.869875-05:00",
+      "updated_at": "2026-01-26T21:53:55.869875-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":70}"
+    },
+    {
+      "id": 229,
+      "change_id": "ce509fe8-f5cf-47b3-ae4e-cb22eedf98f1",
+      "node_type": "observation",
+      "title": "EMLX.Backend.dot override: detect quantized operands, dispatch to quantized_matmul",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:54:06.098943-05:00",
+      "updated_at": "2026-01-26T21:54:06.098943-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 230,
+      "change_id": "b2930c77-b793-4581-ba81-7e68b16e70a7",
+      "node_type": "observation",
+      "title": "Bumblebee model definitions unchanged - only loader needs quantization awareness",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:54:07.044628-05:00",
+      "updated_at": "2026-01-26T21:54:07.044628-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":85}"
+    },
+    {
+      "id": 231,
+      "change_id": "4e924386-d522-4795-a215-234718ab7515",
+      "node_type": "observation",
+      "title": "Success: bumblebee_quantized deprecated in favor of core Bumblebee",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T21:54:07.676765-05:00",
+      "updated_at": "2026-01-26T21:54:07.676765-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":70}"
     }
   ],
   "edges": [
@@ -5061,6 +5193,127 @@
       "weight": 1.0,
       "rationale": "Workaround documented",
       "created_at": "2026-01-26T09:31:13.359758-05:00"
+    },
+    {
+      "id": 242,
+      "from_node_id": 220,
+      "to_node_id": 221,
+      "from_change_id": "d533ca61-7f8f-40e4-b46e-0b6f9a08987f",
+      "to_change_id": "f2ed49ef-31b3-4006-871c-4ef2c657153c",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Design decision for achieving upstream goal",
+      "created_at": "2026-01-26T21:53:45.354276-05:00"
+    },
+    {
+      "id": 243,
+      "from_node_id": 221,
+      "to_node_id": 223,
+      "from_change_id": "f2ed49ef-31b3-4006-871c-4ef2c657153c",
+      "to_change_id": "d2349941-11b9-4897-a781-ab93daaaf443",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Chosen approach",
+      "created_at": "2026-01-26T21:53:45.952452-05:00"
+    },
+    {
+      "id": 244,
+      "from_node_id": 221,
+      "to_node_id": 224,
+      "from_change_id": "f2ed49ef-31b3-4006-871c-4ef2c657153c",
+      "to_change_id": "60fb3c6d-09ac-4c00-841d-9da65598c09a",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Rejected approach",
+      "created_at": "2026-01-26T21:53:48.018314-05:00"
+    },
+    {
+      "id": 245,
+      "from_node_id": 222,
+      "to_node_id": 221,
+      "from_change_id": "623a75d5-76b7-4502-be3f-4228449cab59",
+      "to_change_id": "f2ed49ef-31b3-4006-871c-4ef2c657153c",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Maintainer feedback informing design",
+      "created_at": "2026-01-26T21:53:48.714495-05:00"
+    },
+    {
+      "id": 246,
+      "from_node_id": 223,
+      "to_node_id": 225,
+      "from_change_id": "d2349941-11b9-4897-a781-ab93daaaf443",
+      "to_change_id": "4dbdd626-22da-4d16-8b49-3c45b9cbcc95",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Implementation detail",
+      "created_at": "2026-01-26T21:53:49.430043-05:00"
+    },
+    {
+      "id": 247,
+      "from_node_id": 220,
+      "to_node_id": 226,
+      "from_change_id": "d533ca61-7f8f-40e4-b46e-0b6f9a08987f",
+      "to_change_id": "020b34d5-cc08-4385-a2c2-cabc28f413e9",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "First phase of upstream work",
+      "created_at": "2026-01-26T21:54:00.073933-05:00"
+    },
+    {
+      "id": 248,
+      "from_node_id": 226,
+      "to_node_id": 227,
+      "from_change_id": "020b34d5-cc08-4385-a2c2-cabc28f413e9",
+      "to_change_id": "a3a60ddd-0f9d-4c27-b0a9-4331c912ff32",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Phase 2 depends on Phase 1",
+      "created_at": "2026-01-26T21:54:00.081011-05:00"
+    },
+    {
+      "id": 249,
+      "from_node_id": 227,
+      "to_node_id": 228,
+      "from_change_id": "a3a60ddd-0f9d-4c27-b0a9-4331c912ff32",
+      "to_change_id": "13164a08-5558-43f7-86c0-97e4f72529b8",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Phase 3 depends on Phase 2",
+      "created_at": "2026-01-26T21:54:00.087820-05:00"
+    },
+    {
+      "id": 250,
+      "from_node_id": 223,
+      "to_node_id": 229,
+      "from_change_id": "d2349941-11b9-4897-a781-ab93daaaf443",
+      "to_change_id": "ce509fe8-f5cf-47b3-ae4e-cb22eedf98f1",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Key implementation detail",
+      "created_at": "2026-01-26T21:54:11.923042-05:00"
+    },
+    {
+      "id": 251,
+      "from_node_id": 223,
+      "to_node_id": 230,
+      "from_change_id": "d2349941-11b9-4897-a781-ab93daaaf443",
+      "to_change_id": "b2930c77-b793-4581-ba81-7e68b16e70a7",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Design benefit",
+      "created_at": "2026-01-26T21:54:11.929771-05:00"
+    },
+    {
+      "id": 252,
+      "from_node_id": 220,
+      "to_node_id": 231,
+      "from_change_id": "d533ca61-7f8f-40e4-b46e-0b6f9a08987f",
+      "to_change_id": "4e924386-d522-4795-a215-234718ab7515",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Success criteria",
+      "created_at": "2026-01-26T21:54:11.936727-05:00"
     }
   ]
 }
