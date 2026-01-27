@@ -1,5 +1,13 @@
 [
   {
+    "hash": "bc50c6d15bd3d2673717bdd40d47af6c5d532974",
+    "short_hash": "bc50c6d",
+    "author": "=",
+    "date": "2026-01-26T22:31:46-05:00",
+    "message": "docs: Update graph - bits refactor per Paulo's feedback\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 2
+  },
+  {
     "hash": "1e8895ee266a4a3d2061a42dd4a0d61ba510b2bf",
     "short_hash": "1e8895e",
     "author": "=",
