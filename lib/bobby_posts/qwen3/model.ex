@@ -142,13 +142,25 @@ defmodule BobbyPosts.Qwen3.Model do
 
   For quantized embeddings, we dequantize the relevant rows.
   """
-  def embedding_lookup(input_ids, %EMLX.QuantizedTensor{} = qt, _config) do
-    # Dequantize the entire embedding matrix using QuantizedTensor helper
-    full_embed = EMLX.QuantizedTensor.dequantize(qt)
-    embed_nx = EMLX.to_nx(full_embed)
+  def embedding_lookup(input_ids, %Nx.Tensor{} = embed_weights, _config) do
+    # Check if this is a backend-quantized tensor
+    if EMLX.Backend.quantized?(embed_weights) do
+      # Get quantization options from backend
+      opts = EMLX.Backend.quantization_options(embed_weights)
 
-    # Gather embeddings for input_ids
-    Nx.take(embed_nx, input_ids, axis: 0)
+      # Get the packed weight ref from the backend
+      %Nx.Tensor{data: %EMLX.Backend{ref: weight_ref}} = embed_weights
+
+      # Dequantize the entire embedding matrix
+      full_embed = EMLX.dequantize(weight_ref, opts.scales, opts.biases, opts.group_size, opts.bits)
+      embed_nx = EMLX.Backend.to_nx(full_embed)
+
+      # Gather embeddings for input_ids
+      Nx.take(embed_nx, input_ids, axis: 0)
+    else
+      # Regular tensor - just do the lookup
+      Nx.take(embed_weights, input_ids, axis: 0)
+    end
   end
 
   # Legacy support for old {weight, scales, biases} map format

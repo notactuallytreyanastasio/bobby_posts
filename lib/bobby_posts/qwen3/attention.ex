@@ -144,14 +144,13 @@ defmodule BobbyPosts.Qwen3.Attention do
   @doc """
   Performs quantized linear projection.
 
-  Uses EMLX.dot with QuantizedTensor for transparent 4-bit dispatch.
+  Uses Nx.dot with backend-quantized tensor for transparent 4-bit dispatch.
+  The weight tensor must have quantization options in its EMLX.Backend struct.
   """
-  def quantized_linear(x, %EMLX.QuantizedTensor{} = qt) do
-    # EMLX.dot automatically dispatches to quantized_matmul
-    result = EMLX.dot(x, qt)
-
-    # Convert back to Nx tensor
-    EMLX.to_nx(result)
+  def quantized_linear(x, %Nx.Tensor{} = weight) do
+    # Nx.dot automatically dispatches to quantized_matmul when weight
+    # has quantization_options in its backend struct
+    Nx.dot(x, [-1], weight, [1])
   end
 
   # Legacy support for old {weight, scales, biases} map format

@@ -22,9 +22,8 @@ defmodule BobbyPosts.QuantizedLoader do
   require Logger
 
   alias BobbyPosts.Safetensors
-  alias EMLX.QuantizedTensor
 
-  @type quantized_weight :: QuantizedTensor.t()
+  @type quantized_weight :: Nx.Tensor.t()
 
   @type layer_weights :: %{
           self_attn: %{
@@ -116,12 +115,12 @@ defmodule BobbyPosts.QuantizedLoader do
   end
 
   @doc """
-  Loads a single quantized weight as an EMLX.QuantizedTensor.
+  Loads a single quantized weight as an Nx.Tensor with backend quantization options.
 
-  The QuantizedTensor bundles the packed weights with scales and biases,
-  enabling transparent dispatch to quantized kernels via `EMLX.dot/2`.
+  The returned tensor has quantization metadata stored in its EMLX.Backend struct,
+  enabling `Nx.dot` to automatically dispatch to `quantized_matmul`.
   """
-  @spec load_quantized_weight(Path.t(), map(), String.t()) :: quantized_weight()
+  @spec load_quantized_weight(Path.t(), map(), String.t()) :: Nx.Tensor.t()
   def load_quantized_weight(path, header, base_name) do
     # Load each component as EMLX device refs
     weight_nx = load_tensor_gpu(path, header, "#{base_name}.weight")
@@ -138,11 +137,11 @@ defmodule BobbyPosts.QuantizedLoader do
     {out_features, packed_in} = Nx.shape(weight_nx)
     original_shape = {out_features, packed_in * 8}
 
-    # Create QuantizedTensor for transparent dispatch
-    EMLX.from_quantized(weight_ref, scales_ref, biases_ref,
+    # Create quantized Nx.Tensor with backend options
+    # This enables Nx.dot to automatically use quantized_matmul
+    EMLX.quantized_tensor(weight_ref, scales_ref, biases_ref, original_shape,
       bits: 4,
-      group_size: 64,
-      original_shape: original_shape
+      group_size: 64
     )
   end
 
@@ -240,19 +239,26 @@ defmodule BobbyPosts.QuantizedLoader do
     }
   end
 
-  defp count_quantized_params(%QuantizedTensor{} = qt) do
-    # Get sizes from the original shape and quantization params
-    {out_features, in_features} = qt.original_shape
-    group_size = qt.group_size
+  defp count_quantized_params(%Nx.Tensor{} = tensor) do
+    # Check if this is a backend-quantized tensor
+    if EMLX.Backend.quantized?(tensor) do
+      # Get sizes from the tensor shape (which is the original shape)
+      {out_features, in_features} = Nx.shape(tensor)
+      opts = EMLX.Backend.quantization_options(tensor)
+      group_size = opts.group_size
 
-    # Weight: [out, in/8] as uint32 (4 bytes each) for 4-bit quantization
-    weight_bytes = out_features * div(in_features, 8) * 4
-    # Scales: [out, in/group_size] as bf16 (2 bytes each)
-    scales_bytes = out_features * div(in_features, group_size) * 2
-    # Biases: same as scales
-    biases_bytes = scales_bytes
+      # Weight: [out, in/8] as uint32 (4 bytes each) for 4-bit quantization
+      weight_bytes = out_features * div(in_features, 8) * 4
+      # Scales: [out, in/group_size] as bf16 (2 bytes each)
+      scales_bytes = out_features * div(in_features, group_size) * 2
+      # Biases: same as scales
+      biases_bytes = scales_bytes
 
-    weight_bytes + scales_bytes + biases_bytes
+      weight_bytes + scales_bytes + biases_bytes
+    else
+      # Regular tensor
+      tensor_size(tensor)
+    end
   end
 
   # Legacy format support
