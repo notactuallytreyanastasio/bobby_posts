@@ -2628,6 +2628,17 @@
       "created_at": "2026-01-26T22:28:10.714546-05:00",
       "updated_at": "2026-01-26T22:28:10.714546-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":90}"
+    },
+    {
+      "id": 240,
+      "change_id": "9dea0734-e55c-4ceb-905a-c71a24b6c49a",
+      "node_type": "action",
+      "title": "Refactored: bits derived from tensor type {:s, 4} not quant_opts",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:31:41.322900-05:00",
+      "updated_at": "2026-01-26T22:31:41.322900-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"1e8895e\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -5490,6 +5501,17 @@
       "weight": 1.0,
       "rationale": "Maintainer feedback on PR",
       "created_at": "2026-01-26T22:28:16.576468-05:00"
+    },
+    {
+      "id": 261,
+      "from_node_id": 239,
+      "to_node_id": 240,
+      "from_change_id": "cb62685e-e7e3-480f-ac7e-201e67814d79",
+      "to_change_id": "9dea0734-e55c-4ceb-905a-c71a24b6c49a",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Implemented feedback",
+      "created_at": "2026-01-26T22:31:41.330675-05:00"
     }
   ]
 }
