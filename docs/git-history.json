@@ -1,5 +1,13 @@
 [
   {
+    "hash": "0ee779e5c48bc32300e590f1e29334c23b6d4777",
+    "short_hash": "0ee779e",
+    "author": "=",
+    "date": "2026-01-26T22:18:16-05:00",
+    "message": "docs: Update graph - cleanup complete\n\nAdded node 237:\n- Outcome: Removed QuantizedTensor, using clean backend integration\n\nGraph now: 237 nodes, 258 edges\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 1
+  },
+  {
     "hash": "aea7f4a372a6d9f325f51fcd128399a5a3419f01",
     "short_hash": "aea7f4a",
     "author": "=",
