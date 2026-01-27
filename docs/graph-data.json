@@ -2595,6 +2595,17 @@
       "created_at": "2026-01-26T22:11:14.269294-05:00",
       "updated_at": "2026-01-26T22:11:14.269294-05:00",
       "metadata_json": "{\"branch\":\"main\",\"commit\":\"aea7f4a\",\"confidence\":95}"
+    },
+    {
+      "id": 237,
+      "change_id": "b83b152c-67a5-4710-9f7f-422a4b95afc9",
+      "node_type": "outcome",
+      "title": "Removed QuantizedTensor, using clean backend integration",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:18:10.018686-05:00",
+      "updated_at": "2026-01-26T22:18:10.018686-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
     }
   ],
   "edges": [
@@ -5424,6 +5435,17 @@
       "weight": 1.0,
       "rationale": "Implementing improved approach",
       "created_at": "2026-01-26T22:11:20.327720-05:00"
+    },
+    {
+      "id": 258,
+      "from_node_id": 236,
+      "to_node_id": 237,
+      "from_change_id": "8d589db9-ed5c-49f4-a323-00a63462e5cd",
+      "to_change_id": "b83b152c-67a5-4710-9f7f-422a4b95afc9",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Cleanup complete",
+      "created_at": "2026-01-26T22:18:10.025579-05:00"
     }
   ]
 }
