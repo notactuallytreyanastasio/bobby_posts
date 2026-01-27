@@ -1,5 +1,13 @@
 [
   {
+    "hash": "aea7f4a372a6d9f325f51fcd128399a5a3419f01",
+    "short_hash": "aea7f4a",
+    "author": "=",
+    "date": "2026-01-26T22:11:06-05:00",
+    "message": "feat: Use backend-integrated quantized tensors (Paulo's approach)\n\nUpdated to use EMLX.quantized_tensor/5 which creates Nx.Tensor with\nquantization_options in the backend struct. This is cleaner than\nthe QuantizedTensor struct approach.\n\nquantized_loader.ex:\n- load_quantized_weight returns Nx.Tensor with backend quant options\n- Uses EMLX.quantized_tensor instead of EMLX.from_quantized\n- count_quantized_params checks EMLX.Backend.quantized?\n\nattention.ex:\n- quantized_linear uses plain Nx.dot\n- Nx.dot automatically dispatches to quantized_matmul\n\nmodel.ex:\n- embedding_lookup checks EMLX.Backend.quantized?\n- Gets scales/biases from quantization_options for dequantize\n\nBenefits of backend-integrated approach:\n- Works with standard Nx operations\n- No wrapper struct needed\n- Quantization info travels with tensor through Nx type system\n- Cleaner integration path for Bumblebee\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
     "hash": "e3f98d878796e133682e9f514cf1f13a2183f52c",
     "short_hash": "e3f98d8",
     "author": "=",

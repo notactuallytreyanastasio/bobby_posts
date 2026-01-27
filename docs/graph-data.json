@@ -2573,6 +2573,28 @@
       "created_at": "2026-01-26T22:04:22.148724-05:00",
       "updated_at": "2026-01-26T22:04:22.148724-05:00",
       "metadata_json": "{\"branch\":\"main\",\"commit\":\"e3f98d8\",\"confidence\":90,\"files\":[\"lib/bobby_posts/quantized_loader.ex\",\"lib/bobby_posts/qwen3/attention.ex\",\"lib/bobby_posts/qwen3/model.ex\"]}"
+    },
+    {
+      "id": 235,
+      "change_id": "b0cf64d5-3276-497c-85da-c55c9d8febce",
+      "node_type": "observation",
+      "title": "Paulo's approach: store quant options in Backend struct, not separate type",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:11:13.186056-05:00",
+      "updated_at": "2026-01-26T22:11:13.186056-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
+    },
+    {
+      "id": 236,
+      "change_id": "8d589db9-ed5c-49f4-a323-00a63462e5cd",
+      "node_type": "action",
+      "title": "Refactor to backend-integrated quantization (cleaner API)",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:11:14.269294-05:00",
+      "updated_at": "2026-01-26T22:11:14.269294-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"aea7f4a\",\"confidence\":95}"
     }
   ],
   "edges": [
@@ -5380,6 +5402,28 @@
       "weight": 1.0,
       "rationale": "Apply transparent API to reference implementation",
       "created_at": "2026-01-26T22:04:23.353797-05:00"
+    },
+    {
+      "id": 256,
+      "from_node_id": 234,
+      "to_node_id": 235,
+      "from_change_id": "1442fc83-af83-42d7-b2b1-ab556c2c63f9",
+      "to_change_id": "b0cf64d5-3276-497c-85da-c55c9d8febce",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Further feedback from maintainer",
+      "created_at": "2026-01-26T22:11:20.320414-05:00"
+    },
+    {
+      "id": 257,
+      "from_node_id": 235,
+      "to_node_id": 236,
+      "from_change_id": "b0cf64d5-3276-497c-85da-c55c9d8febce",
+      "to_change_id": "8d589db9-ed5c-49f4-a323-00a63462e5cd",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Implementing improved approach",
+      "created_at": "2026-01-26T22:11:20.327720-05:00"
     }
   ]
 }
