@@ -2562,6 +2562,17 @@
       "created_at": "2026-01-26T21:59:40.655639-05:00",
       "updated_at": "2026-01-26T21:59:40.655639-05:00",
       "metadata_json": "{\"branch\":\"main\",\"confidence\":100}"
+    },
+    {
+      "id": 234,
+      "change_id": "1442fc83-af83-42d7-b2b1-ab556c2c63f9",
+      "node_type": "action",
+      "title": "Update bobby_posts to use QuantizedTensor API",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:04:22.148724-05:00",
+      "updated_at": "2026-01-26T22:04:22.148724-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"e3f98d8\",\"confidence\":90,\"files\":[\"lib/bobby_posts/quantized_loader.ex\",\"lib/bobby_posts/qwen3/attention.ex\",\"lib/bobby_posts/qwen3/model.ex\"]}"
     }
   ],
   "edges": [
@@ -5358,6 +5369,17 @@
       "weight": 1.0,
       "rationale": "Implementation result",
       "created_at": "2026-01-26T21:59:46.342073-05:00"
+    },
+    {
+      "id": 255,
+      "from_node_id": 233,
+      "to_node_id": 234,
+      "from_change_id": "76605494-5820-49de-92f9-38e08f989b0b",
+      "to_change_id": "1442fc83-af83-42d7-b2b1-ab556c2c63f9",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Apply transparent API to reference implementation",
+      "created_at": "2026-01-26T22:04:23.353797-05:00"
     }
   ]
 }

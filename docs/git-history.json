@@ -1,5 +1,13 @@
 [
   {
+    "hash": "e3f98d878796e133682e9f514cf1f13a2183f52c",
+    "short_hash": "e3f98d8",
+    "author": "=",
+    "date": "2026-01-26T22:04:15-05:00",
+    "message": "feat: Use EMLX.QuantizedTensor for transparent dispatch\n\nUpdated bobby_posts to use the new transparent quantized tensor API:\n\nquantized_loader.ex:\n- load_quantized_weight now returns EMLX.QuantizedTensor\n- QuantizedTensor bundles weight/scales/biases with metadata\n- Created once at load time, reused on every forward pass\n\nattention.ex:\n- quantized_linear accepts QuantizedTensor, uses EMLX.dot\n- EMLX.dot automatically dispatches to quantized_matmul\n- Legacy map format still supported for backward compatibility\n\nmodel.ex:\n- embedding_lookup accepts QuantizedTensor\n- Uses QuantizedTensor.dequantize helper\n\nBenefits:\n- Cleaner API: no manual from_nx/to_nx on every call\n- Single dispatch point: QuantizedTensor created once\n- Transparent: downstream code doesn't need EMLX-specific calls\n- Path to Bumblebee integration: model definitions unchanged\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 4
+  },
+  {
     "hash": "404816bb58b82d335ed6aff22f3662d665746466",
     "short_hash": "404816b",
     "author": "=",
