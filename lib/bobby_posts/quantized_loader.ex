@@ -14,9 +14,9 @@ defmodule BobbyPosts.QuantizedLoader do
 
   ## Transparent Quantized Tensors
 
-  Weights are loaded as `EMLX.QuantizedTensor` instances, which bundle the
-  packed weights with their scales and biases. This enables transparent
-  dispatch to quantized kernels via `EMLX.dot/2`.
+  Weights are loaded as Nx.Tensors with quantization options stored in
+  the EMLX.Backend struct. This enables `Nx.dot` to automatically dispatch
+  to quantized kernels.
   """
 
   require Logger

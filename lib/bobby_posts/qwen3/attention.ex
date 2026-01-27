@@ -175,7 +175,7 @@ defmodule BobbyPosts.Qwen3.Attention do
 
   ## Parameters
     - x: Input tensor [batch, seq, hidden]
-    - base_weights: EMLX.QuantizedTensor with packed 4-bit weights
+    - base_weights: Nx.Tensor with backend quantization options (packed 4-bit weights)
     - lora_weights: LoRA adapter weights {lora_a, lora_b} or nil
     - scaling: LoRA scaling factor (scale / rank)
   """
