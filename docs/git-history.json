@@ -1,5 +1,13 @@
 [
   {
+    "hash": "98df2a7fc0189bb3a51e2e91d364e4c8303cbc3f",
+    "short_hash": "98df2a7",
+    "author": "=",
+    "date": "2026-01-26T22:44:48-05:00",
+    "message": "refactor: Use EMLX.Quantization module for cleaner API\n\n- quantized_loader.ex: Use EMLX.Quantization.tensor and .quantized?\n- model.ex: Use EMLX.Quantization.dequantize and .options\n- Fix bug: derive bits from tensor type {:s, 4} instead of opts.bits\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "files_changed": 2
+  },
+  {
     "hash": "bc50c6d15bd3d2673717bdd40d47af6c5d532974",
     "short_hash": "bc50c6d",
     "author": "=",

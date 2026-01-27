@@ -2650,6 +2650,17 @@
       "created_at": "2026-01-26T22:36:43.038969-05:00",
       "updated_at": "2026-01-26T22:36:43.038969-05:00",
       "metadata_json": "{\"branch\":\"main\",\"commit\":\"bc50c6d\",\"confidence\":90}"
+    },
+    {
+      "id": 242,
+      "change_id": "c4e639c5-1552-4fea-bdf5-26920e4650e9",
+      "node_type": "action",
+      "title": "Updated bobby_posts to use EMLX.Quantization module",
+      "description": null,
+      "status": "pending",
+      "created_at": "2026-01-26T22:45:01.419531-05:00",
+      "updated_at": "2026-01-26T22:45:01.419531-05:00",
+      "metadata_json": "{\"branch\":\"main\",\"commit\":\"98df2a7\",\"confidence\":90}"
     }
   ],
   "edges": [
@@ -5534,6 +5545,17 @@
       "weight": 1.0,
       "rationale": "Final PR refinement",
       "created_at": "2026-01-26T22:36:43.046369-05:00"
+    },
+    {
+      "id": 263,
+      "from_node_id": 241,
+      "to_node_id": 242,
+      "from_change_id": "b8d12e48-a9a4-4c75-9f64-4bf1a66929ce",
+      "to_change_id": "c4e639c5-1552-4fea-bdf5-26920e4650e9",
+      "edge_type": "leads_to",
+      "weight": 1.0,
+      "rationale": "Applied new API",
+      "created_at": "2026-01-26T22:45:01.428532-05:00"
     }
   ]
 }
