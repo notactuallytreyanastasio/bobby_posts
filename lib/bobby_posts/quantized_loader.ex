@@ -139,7 +139,7 @@ defmodule BobbyPosts.QuantizedLoader do
 
     # Create quantized Nx.Tensor with backend options
     # This enables Nx.dot to automatically use quantized_matmul
-    EMLX.quantized_tensor(weight_ref, scales_ref, biases_ref, original_shape,
+    EMLX.Quantization.tensor(weight_ref, scales_ref, biases_ref, original_shape,
       bits: 4,
       group_size: 64
     )
@@ -241,10 +241,10 @@ defmodule BobbyPosts.QuantizedLoader do
 
   defp count_quantized_params(%Nx.Tensor{} = tensor) do
     # Check if this is a backend-quantized tensor
-    if EMLX.Backend.quantized?(tensor) do
+    if EMLX.Quantization.quantized?(tensor) do
       # Get sizes from the tensor shape (which is the original shape)
       {out_features, in_features} = Nx.shape(tensor)
-      opts = EMLX.Backend.quantization_options(tensor)
+      opts = EMLX.Quantization.options(tensor)
       group_size = opts.group_size
 
       # Weight: [out, in/8] as uint32 (4 bytes each) for 4-bit quantization

@@ -144,15 +144,21 @@ defmodule BobbyPosts.Qwen3.Model do
   """
   def embedding_lookup(input_ids, %Nx.Tensor{} = embed_weights, _config) do
     # Check if this is a backend-quantized tensor
-    if EMLX.Backend.quantized?(embed_weights) do
+    if EMLX.Quantization.quantized?(embed_weights) do
       # Get quantization options from backend
-      opts = EMLX.Backend.quantization_options(embed_weights)
+      opts = EMLX.Quantization.options(embed_weights)
+
+      # Get bits from tensor type (e.g., {:s, 4} -> 4)
+      {:s, bits} = Nx.type(embed_weights)
 
       # Get the packed weight ref from the backend
       %Nx.Tensor{data: %EMLX.Backend{ref: weight_ref}} = embed_weights
 
       # Dequantize the entire embedding matrix
-      full_embed = EMLX.dequantize(weight_ref, opts.scales, opts.biases, opts.group_size, opts.bits)
+      full_embed = EMLX.Quantization.dequantize(weight_ref, opts.scales, opts.biases,
+        group_size: opts.group_size,
+        bits: bits
+      )
       embed_nx = EMLX.Backend.to_nx(full_embed)
 
       # Gather embeddings for input_ids
@@ -171,7 +177,7 @@ defmodule BobbyPosts.Qwen3.Model do
     b_raw = EMLX.Backend.from_nx(b)
 
     # Dequantize the entire embedding matrix
-    full_embed = EMLX.dequantize(w_raw, s_raw, b_raw, 64, 4)
+    full_embed = EMLX.Quantization.dequantize(w_raw, s_raw, b_raw, group_size: 64, bits: 4)
     embed_nx = EMLX.Backend.to_nx(full_embed)
 
     # Gather embeddings for input_ids
